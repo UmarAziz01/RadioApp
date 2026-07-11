@@ -1,0 +1,33 @@
+{
+  "name": "radio-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "expo": "~56.0.12",
+    "expo-av": "~14.0.7",
+    "expo-blur": "~56.0.3",
+    "expo-file-system": "~56.0.8",
+    "expo-linear-gradient": "~56.0.4",
+    "expo-sharing": "~56.0.21",
+    "expo-status-bar": "~56.0.4",
+    "lamejs": "^1.2.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "^15.15.5",
+    "react-native-web": "^0.21.2"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true,
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-native": "^0.72.8",
+    "typescript": "^6.0.3"
+  }
+}
