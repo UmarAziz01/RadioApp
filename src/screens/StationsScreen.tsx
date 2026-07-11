@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
   },
   stationOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',

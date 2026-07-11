@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     borderColor: C.border,
   },
   heroBg: {
-    ...StyleSheet.absoluteFill,
+    ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,219,233,0.04)',
   },
   heroContent: {
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
     height: 180,
   },
   heroGlow: {
-    ...StyleSheet.absoluteFill,
+    ...(StyleSheet.absoluteFill as object),
     borderRadius: 180,
     backgroundColor: 'rgba(0,219,233,0.15)',
     transform: [{ scale: 1.3 }],
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
   },
   stationOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
