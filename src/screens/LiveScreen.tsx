@@ -58,7 +58,7 @@ import {
 } from '../components/NavMenu';
 
 // ─── Aset ikon radio (favicon dipakai sebagai logo/ikon radio di seluruh layar) ───
-const RADIO_LOGO = require('../assets/favicon.png');
+const RADIO_LOGO = require('../../assets/favicon.png');
 
 const RadioIcon = ({ size = 24, style, rounded = true }: { size?: number; style?: any; rounded?: boolean }) => (
   <Image
@@ -128,7 +128,7 @@ const LiveScreen = () => {
   const nativePlayerRef = useRef<AudioPlayer | null>(null);
   const nativeSubscriptionRef = useRef<{ remove: () => void } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const streamUrl = 'https://pu.klikhost.com/proxy/suaramuslim/stream';
+  const streamUrl = 'https://pu.klikhost.com/proxy/suaramuslim/strea';
 
   // Konfigurasi audio session sekali di awal supaya siaran tetap jalan
   // walau app pindah ke latar belakang atau layar dikunci.
