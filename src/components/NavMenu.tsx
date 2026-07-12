@@ -127,13 +127,19 @@ const NavMenu: React.FC<NavMenuProps> = ({ activeNav, onNavChange }) => {
   return (
     <ScrollView style={styles.navScroll}>
       <NavGroup title="Main">
-        <NavItem 
-          icon={<IconRadio />} 
-          label="Root" 
-          active={contextActiveNav === 'root'} 
-          onPress={() => contextOnNavChange && contextOnNavChange('root')} 
+        <NavItem
+          icon={<IconRadio />}
+          label="Root"
+          active={contextActiveNav === 'root'}
+          onPress={() => contextOnNavChange && contextOnNavChange('root')}
         />
-        <NavItem 
+        <NavItem
+          icon={<IconRadio />}
+          label="Stream"
+          active={contextActiveNav === 'stream'}
+          onPress={() => contextOnNavChange && contextOnNavChange('stream')}
+        />
+        <NavItem
           icon={<IconRadio />} 
           label="Live Stream" 
           active={contextActiveNav === 'live'} 
@@ -199,13 +205,19 @@ export const MainNavGroup: React.FC<NavMenuProps> = ({ activeNav, onNavChange })
   
   return (
     <NavGroup title="Main">
-      <NavItem 
-        icon={<IconRadio />} 
-        label="Root" 
-        active={contextActiveNav === 'root'} 
-        onPress={() => contextOnNavChange && contextOnNavChange('root')} 
+      <NavItem
+        icon={<IconRadio />}
+        label="Root"
+        active={contextActiveNav === 'root'}
+        onPress={() => contextOnNavChange && contextOnNavChange('root')}
       />
-      <NavItem 
+      <NavItem
+        icon={<IconRadio />}
+        label="Stream"
+        active={contextActiveNav === 'stream'}
+        onPress={() => contextOnNavChange && contextOnNavChange('stream')}
+      />
+      <NavItem
         icon={<IconRadio />} 
         label="Live Stream" 
         active={contextActiveNav === 'live'} 

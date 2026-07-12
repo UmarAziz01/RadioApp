@@ -12,6 +12,7 @@ import LogoutScreen from './src/screens/LogoutScreen';
 import RecordingsScreen from './src/screens/RecordingsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import StationsScreen from './src/screens/StationsScreen';
+import StreamScreen from './src/screens/StreamScreen';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 
 const InnerApp: React.FC = () => {
@@ -22,6 +23,8 @@ const InnerApp: React.FC = () => {
     switch (activeScreen) {
       case 'root':
         return <RootRadioScreen />;
+      case 'stream':
+        return <StreamScreen />;
       case 'live':
         return <LiveScreen />;
       case 'analytics':
