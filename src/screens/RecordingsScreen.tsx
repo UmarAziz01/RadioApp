@@ -22,6 +22,10 @@ import {
   IconDownload,
   IconTrash,
   IconShare,
+  IconRadio,
+  IconCalendar,
+  IconSkipPrev,
+  IconSkipNext,
 } from '../components/Icons';
 import { 
   MainNavGroup, 
@@ -111,7 +115,7 @@ const RecordingsScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>📻</Text>
+                <IconRadio size={24} color={C.primary} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -167,7 +171,7 @@ const RecordingsScreen = () => {
               <Text style={styles.statLabel}>Recordings</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={{ fontSize: 24 }}>📅</Text>
+              <IconCalendar size={24} color={C.primary} />
               <Text style={styles.statValue}>12h</Text>
               <Text style={styles.statLabel}>This Week</Text>
             </View>
@@ -259,7 +263,7 @@ const RecordingsScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>🎙️</Text>
+            <IconMic size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Select a recording</Text>
@@ -273,13 +277,13 @@ const RecordingsScreen = () => {
         <View style={styles.playerCenter}>
           <View style={styles.playerControls}>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏮</Text>
+              <IconSkipPrev size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.playBtn}>
-              <IconPlay />
+              <IconPlay size={30} color={C.onPrimary} />
             </TouchableOpacity>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏭</Text>
+              <IconSkipNext size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
         </View>
@@ -629,9 +633,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playerArtText: {
-    fontSize: 28,
-  },
   playerInfo: {
     flex: 1,
   },
@@ -656,10 +657,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 24,
-  },
-  skipText: {
-    fontSize: 20,
-    color: C.onSurfaceVariant,
   },
   playBtn: {
     width: 52,

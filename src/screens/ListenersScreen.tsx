@@ -19,6 +19,8 @@ import {
   IconGlobe,
   IconDevice,
   IconHeart,
+  IconOnline,
+  IconRadio, // Added IconRadio for the sidebar brand icon
 } from '../components/Icons';
 import { 
   MainNavGroup, 
@@ -104,7 +106,7 @@ const ListenersScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>📻</Text>
+                <IconRadio size={24} color={C.primary} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -155,7 +157,7 @@ const ListenersScreen = () => {
               <Text style={styles.statLabel}>Total Listeners</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={{ fontSize: 24 }}>🟢</Text>
+              <IconOnline />
               <Text style={styles.statValue}>{onlineCount}</Text>
               <Text style={styles.statLabel}>Online Now</Text>
             </View>
@@ -200,6 +202,9 @@ const ListenersScreen = () => {
                 <View style={[styles.tableCell, styles.colUser]}>
                   <View style={styles.userCell}>
                     <Text style={styles.userAvatar}>{listener.avatar}</Text>
+// Need to replace emoji avatars with actual icons or placeholders if not present.
+// For now, I'll assume these emojis are intended and not part of the emoji replacement task itself.
+// If they need to be replaced by SVG icons, that would require a separate step or more info.
                     <Text style={styles.userName}>{listener.name}</Text>
                   </View>
                 </View>
@@ -248,7 +253,7 @@ const ListenersScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>🎧</Text>
+            <IconRadio size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Listener Activity</Text>
@@ -628,9 +633,6 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playerArtText: {
-    fontSize: 28,
   },
   playerInfo: {
     flex: 1,

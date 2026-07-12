@@ -36,6 +36,12 @@ import {
   IconLogout,
   IconLive,
   IconMenu,
+  IconMixer,
+  IconMoon,
+  IconWave,
+  IconFactory,
+  IconCity,
+  IconDiamond,
 } from '../components/Icons';
 import { 
   MainNavGroup, 
@@ -65,10 +71,10 @@ const C = {
 
 // ─── Data stasiun radio ───
 const liveStations = [
-  { id: '1', name: 'Cyber-Pulse FM', genre: 'Synthwave • Electronic', listeners: '12.4k', image: '🎛️', status: 'live' },
-  { id: '2', name: 'Neon Nights', genre: 'Synthwave • 2.1k', listeners: '2.1k', image: '🌃', status: 'live' },
-  { id: '3', name: 'Deep Ambient', genre: 'Chill • 1.4k', listeners: '1.4k', image: '🌊', status: 'live' },
-  { id: '4', name: 'Machine Grind', genre: 'Techno • 3.8k', listeners: '3.8k', image: '🏭', status: 'live' },
+  { id: '1', name: 'Cyber-Pulse FM', genre: 'Synthwave • Electronic', listeners: '12.4k', icon: 'IconMixer', status: 'live' },
+  { id: '2', name: 'Neon Nights', genre: 'Synthwave • 2.1k', listeners: '2.1k', icon: 'IconCity', status: 'live' },
+  { id: '3', name: 'Deep Ambient', genre: 'Chill • 1.4k', listeners: '1.4k', icon: 'IconWave', status: 'live' },
+  { id: '4', name: 'Machine Grind', genre: 'Techno • 3.8k', listeners: '3.8k', icon: 'IconFactory', status: 'live' },
 ];
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -166,6 +172,17 @@ const LiveScreen = () => {
     outputRange: [0, SIDEBAR_WIDTH],
   });
 
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'IconMixer': return <IconMixer size={36} color={C.onSurface} />;
+      case 'IconCity': return <IconCity size={36} color={C.onSurface} />;
+      case 'IconWave': return <IconWave size={36} color={C.onSurface} />;
+      case 'IconFactory': return <IconFactory size={36} color={C.onSurface} />;
+      case 'IconDiamond': return <IconDiamond size={36} color={C.onSurface} />;
+      default: return <IconRadio size={36} color={C.onSurface} />;
+    }
+  };
+
   // ─── RENDER ───
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -178,7 +195,7 @@ const LiveScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>📻</Text>
+                <IconRadio size={24} color={C.primary} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -244,9 +261,9 @@ const LiveScreen = () => {
               <View style={styles.heroLogoSection}>
                 <View style={styles.heroLogoContainer}>
                   <View style={styles.heroGlow} />
-                  <View style={styles.heroLogo}>
-                    <Text style={styles.heroLogoText}>📻</Text>
-                  </View>
+                    <View style={styles.heroLogo}>
+                      <IconRadio size={72} color={C.primary} />
+                    </View>
                 </View>
               </View>
 
@@ -293,17 +310,20 @@ const LiveScreen = () => {
           </View>
 
           {/* Live Stations */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>🔴 Live Now</Text>
-          </View>
+           <View style={styles.sectionHeader}>
+             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+               <IconLive size={20} color={C.secondaryContainer} />
+               <Text style={styles.sectionTitle}>Live Now</Text>
+             </View>
+           </View>
 
           <View style={styles.stationGrid}>
             {liveStations.map((station) => (
               <TouchableOpacity key={station.id} style={styles.stationCard}>
                 <View style={styles.stationImage}>
-                  <Text style={styles.stationEmoji}>{station.image}</Text>
+                  {getIconComponent(station.icon)}
                   <View style={styles.stationOverlay}>
-                    <IconPlay />
+                    <IconPlay size={36} color={'#fff'} />
                   </View>
                 </View>
                 <View style={styles.liveIndicator}>
@@ -322,7 +342,7 @@ const LiveScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>📻</Text>
+            <IconRadio size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Cyber-Pulse Live</Text>
@@ -562,9 +582,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroLogoText: {
-    fontSize: 72,
-  },
   heroInfo: {
     flex: 1,
   },
@@ -683,9 +700,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stationEmoji: {
-    fontSize: 36,
-  },
   stationOverlay: {
     ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -751,9 +765,6 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playerArtText: {
-    fontSize: 28,
   },
   playerInfo: {
     flex: 1,

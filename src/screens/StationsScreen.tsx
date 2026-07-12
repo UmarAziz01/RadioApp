@@ -22,6 +22,16 @@ import {
   IconMenu,
   IconPlus,
   IconFilter,
+  IconMixer,
+  IconMoon,
+  IconWave,
+  IconFactory,
+  IconDiamond,
+  IconRoad,
+  IconSkipPrev,
+  IconSkipNext,
+  IconStop,
+  IconGlobe,
 } from '../components/Icons';
 import { 
   MainNavGroup, 
@@ -53,14 +63,14 @@ const C = {
 
 // ─── Data stasiun radio ───
 const stations = [
-  { id: '1', name: 'Cyber-Pulse FM', genre: 'Synthwave • Electronic', listeners: '12.4k', image: '🎛️', status: 'live' },
-  { id: '2', name: 'Neon Nights', genre: 'Synthwave • 2.1k', listeners: '2.1k', image: '🌃', status: 'live' },
-  { id: '3', name: 'Deep Ambient', genre: 'Chill • 1.4k', listeners: '1.4k', image: '🌊', status: 'live' },
-  { id: '4', name: 'Machine Grind', genre: 'Techno • 3.8k', listeners: '3.8k', image: '🏭', status: 'live' },
-  { id: '5', name: 'Silent Space', genre: 'Downtempo • 940', listeners: '940', image: '🌌', status: 'offline' },
-  { id: '6', name: 'Glitch Core', genre: 'Experimental • 1.1k', listeners: '1.1k', image: '💠', status: 'live' },
-  { id: '7', name: 'Neon Highway', genre: 'Synthwave • 890', listeners: '890', image: '🛣️', status: 'live' },
-  { id: '8', name: 'Ocean Drift', genre: 'Chill • 780', listeners: '780', image: '🌊', status: 'live' },
+  { id: '1', name: 'Cyber-Pulse FM', genre: 'Synthwave • Electronic', listeners: '12.4k', icon: 'IconMixer', status: 'live' },
+  { id: '2', name: 'Neon Nights', genre: 'Synthwave • 2.1k', listeners: '2.1k', icon: 'IconMoon', status: 'live' },
+  { id: '3', name: 'Deep Ambient', genre: 'Chill • 1.4k', listeners: '1.4k', icon: 'IconWave', status: 'live' },
+  { id: '4', name: 'Machine Grind', genre: 'Techno • 3.8k', listeners: '3.8k', icon: 'IconFactory', status: 'live' },
+  { id: '5', name: 'Silent Space', genre: 'Downtempo • 940', listeners: '940', icon: 'IconDiamond', status: 'offline' },
+  { id: '6', name: 'Glitch Core', genre: 'Experimental • 1.1k', listeners: '1.1k', icon: 'IconDiamond', status: 'live' },
+  { id: '7', name: 'Neon Highway', genre: 'Synthwave • 890', listeners: '890', icon: 'IconRoad', status: 'live' },
+  { id: '8', name: 'Ocean Drift', genre: 'Chill • 780', listeners: '780', icon: 'IconWave', status: 'live' },
 ];
 
 const genres = ['All', 'Synthwave', 'Techno', 'Chill', 'Ambient', 'Experimental'];
@@ -92,6 +102,19 @@ const StationsScreen = () => {
     outputRange: [0, SIDEBAR_WIDTH],
   });
 
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'IconMixer': return <IconMixer size={36} color={C.onSurface} />;
+      case 'IconMoon': return <IconMoon size={36} color={C.onSurface} />;
+      case 'IconWave': return <IconWave size={36} color={C.onSurface} />;
+      case 'IconFactory': return <IconFactory size={36} color={C.onSurface} />;
+      case 'IconDiamond': return <IconDiamond size={36} color={C.onSurface} />;
+      case 'IconRoad': return <IconRoad size={36} color={C.onSurface} />;
+      case 'IconGlobe': return <IconGlobe size={36} color={C.onSurface} />;
+      default: return <IconRadio size={36} color={C.onSurface} />;
+    }
+  };
+
   const togglePlay = (id: string) => {
     setPlayingId(playingId === id ? null : id);
   };
@@ -111,7 +134,7 @@ const StationsScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>📻</Text>
+                <IconRadio size={24} color={C.primary} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -236,9 +259,9 @@ const StationsScreen = () => {
                 onPress={() => togglePlay(station.id)}
               >
                 <View style={styles.stationImage}>
-                  <Text style={styles.stationEmoji}>{station.image}</Text>
+                  {getIconComponent(station.icon)}
                   <View style={styles.stationOverlay}>
-                    {playingId === station.id ? <IconPause /> : <IconPlay />}
+                    {playingId === station.id ? <IconPause size={36} color={'#fff'} /> : <IconPlay size={36} color={'#fff'} />}
                   </View>
                   {station.status === 'live' && (
                     <View style={styles.liveBadge}>
@@ -263,7 +286,7 @@ const StationsScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>📻</Text>
+            <IconRadio size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Select a station</Text>
@@ -277,13 +300,13 @@ const StationsScreen = () => {
         <View style={styles.playerCenter}>
           <View style={styles.playerControls}>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏮</Text>
+              <IconSkipPrev size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.playBtn}>
-              <IconPlay />
+              {playingId ? <IconPause size={30} color={C.onPrimary} /> : <IconPlay size={30} color={C.onPrimary} />}
             </TouchableOpacity>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏭</Text>
+              <IconSkipNext size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
         </View>
@@ -566,9 +589,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stationEmoji: {
-    fontSize: 36,
-  },
   stationOverlay: {
     ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -651,9 +671,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playerArtText: {
-    fontSize: 28,
-  },
   playerInfo: {
     flex: 1,
   },
@@ -678,10 +695,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 24,
-  },
-  skipText: {
-    fontSize: 20,
-    color: C.onSurfaceVariant,
   },
   playBtn: {
     width: 52,

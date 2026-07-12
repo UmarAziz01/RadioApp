@@ -272,6 +272,153 @@ export const IconEdit = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', st
   </Svg>
 );
 
+export const IconGear = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" stroke={color} strokeWidth="2" />
+    <Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-1.6a1.65 1.65 0 0 0-1.51-1.51A1.65 1.65 0 0 0 5.6 15l-.06-.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 4.6 9H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1.6a1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33A1.65 1.65 0 0 0 9 4.6V3a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.6a1.65 1.65 0 0 0 .33 1.82z" stroke={color} strokeWidth="2" />
+    <Path d="M12 15.5a3.5 3.5 0 1 0 0-7" stroke={color} strokeWidth="2" />
+    <Path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82l.06-.06a2 2 0 0 1 2.83-2.83l-.06.06a1.65 1.65 0 0 0-1.82.33A1.65 1.65 0 0 0 15 4.6V3a2 2 0 0 1-2-2h-2a2 2 0 0 1-2 2v1.6a1.65 1.65 0 0 0-1.51 1.51A1.65 1.65 0 0 0 5.6 9l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 4.6 3H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1.6a1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82-.33A1.65 1.65 0 0 0 9-4.6V3a2 2 0 0 1-2-2h-2a2 2 0 0 1-2-2v1.6a1.65" stroke={color} strokeWidth="2" />
+    <Path d="M12-4.6V3a2 2 0 0 1-2-2h-2a2 2 0 0 1-2-2v1.6a1.65 1.65 0 0 0-1.51 1.51A1.65 1.65 0 0 0 5.6 9l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 4.6 3H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h1.6a1.65 1.65 0 0 0 .33-1.82l-.06-.06a2 2 0 0_ 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82-.33A1.65 1.65 0 0 0 9-4.6V3a2 2 0 0 1-2-2h-2a2 2 0 0 1-2-2v1.6a1.65" stroke={color} strokeWidth="2" />
+  </Svg>
+);
+
+export const IconDashboard1 = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M3 12h4l3-8v16l-3-8H3zM17 12h4l-3-8v16l3-8h-4z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconClose = ({ size = 20, color = 'var(--illus-accent, #ff525c)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Line x1="18" y1="6" x2="6" y2="18" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="6" y1="6" x2="18" y2="18" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IconTrash2 = ({ size = 20, color = 'var(--illus-accent, #ff525c)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M3 6h18M9 6v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V6M10 11v6M14 11v6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M5 6V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);IconPause
+
+export const IconMoon = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconWave = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7 6 8 6c1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.5-1 3.5-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.5-1 3.5-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconFactory = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H2v18z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconDiamond = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M12 2l9 7-9 13-9-13 9-7z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M2 9h20" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M12 22V9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconCalendar = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke={color} strokeWidth="2" />
+    <Line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IconRoad = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Rect x="4" y="2" width="16" height="20" rx="2" stroke={color} strokeWidth="2" />
+    <Line x1="12" y1="2" x2="12" y2="22" stroke={color} strokeWidth="2" strokeDasharray="4 4" />
+  </Svg>
+);
+
+export const IconUser = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="2" />
+  </Svg>
+);
+
+export const IconCheck = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Polyline points="20 6 9 17 4 12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconOnline = ({ size = 12, color = '#10b981', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Circle cx="12" cy="12" r="10" fill={color} />
+  </Svg>
+);
+
+export const IconMixer = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Line x1="4" y1="21" x2="4" y2="14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="4" y1="10" x2="4" y2="3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="12" y1="21" x2="12" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="12" y1="8" x2="12" y2="3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="20" y1="21" x2="20" y2="16" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="20" y1="12" x2="20" y2="3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="1" y1="14" x2="7" y2="14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="9" y1="8" x2="15" y2="8" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="17" y1="16" x2="23" y2="16" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IconChart = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Line x1="18" y1="20" x2="18" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="12" y1="20" x2="12" y2="4" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="6" y1="20" x2="6" y2="14" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IconCity = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M3 21h18M3 10h18M3 3h18M3 14h18M3 17h18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M6 21V10M9 21V14M12 21V17M15 21V10M18 21V14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const IconKeyboard = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Rect x="2" y="5" width="20" height="14" rx="2" ry="2" stroke={color} strokeWidth="2" />
+    <Line x1="6" y1="9" x2="6.01" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="10" y1="9" x2="10.01" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="14" y1="9" x2="14.01" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="18" y1="9" x2="18.01" y2="9" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="6" y1="13" x2="6.01" y2="13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="10" y1="13" x2="10.01" y2="13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="14" y1="13" x2="14.01" y2="13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    <Line x1="18" y1="13" x2="18.01" y2="13" stroke={color} strokeWidth="2" strokeLinecap="round" />
+  </Svg>
+);
+
+export const IconStar = ({ size = 20, color = 'var(--illus-accent, #00dbe9)', style }: BaseIconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+
+
+
+
+
 // Export all icons as default
 export default {
   IconDashboard,
@@ -308,4 +455,17 @@ export default {
   IconTrendingDown,
   IconMoreVertical,
   IconEdit,
+  IconClose,
+  IconTrash2,
+  IconMoon,
+  IconWave,
+  IconFactory,
+  IconDiamond,
+  IconCalendar,
+  IconRoad,
+  IconUser,
+  IconCheck,
+  IconOnline,
+  IconMixer,
+  IconChart,
 };

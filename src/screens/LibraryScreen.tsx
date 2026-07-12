@@ -22,6 +22,17 @@ import {
   IconHeadphones,
   IconMenu,
   IconClock,
+  IconRadio,
+  IconStar,
+  IconMusic,
+  IconKeyboard,
+  IconMoon,
+  IconFactory,
+  IconWave,
+  IconCity,
+  IconDiamond,
+  IconSkipPrev,
+  IconSkipNext,
 } from '../components/Icons';
 import { 
   MainNavGroup, 
@@ -53,12 +64,12 @@ const C = {
 
 // ─── Data library ───
 const libraryItems = [
-  { id: '1', title: 'Midnight Synthwave Mix', artist: 'Cyber Pulse', duration: '1:24:30', plays: '45.2k', image: '🎹', type: 'playlist' },
-  { id: '2', title: 'Ambient Dreams Collection', artist: 'Deep Space', duration: '2:15:00', plays: '32.1k', image: '🌌', type: 'playlist' },
-  { id: '3', title: 'Techno Bunker Sessions', artist: 'Machine Grind', duration: '0:58:45', plays: '28.9k', image: '🏭', type: 'playlist' },
-  { id: '4', title: 'Chill Waves Vol. 3', artist: 'Ocean Drift', duration: '1:45:20', plays: '22.4k', image: '🌊', type: 'playlist' },
-  { id: '5', title: 'Neon City Lights', artist: 'NightRunner', duration: '1:12:00', plays: '18.7k', image: '🌃', type: 'album' },
-  { id: '6', title: 'Experimental Frequencies', artist: 'Glitch Core', duration: '0:45:30', plays: '15.2k', image: '💠', type: 'album' },
+  { id: '1', title: 'Midnight Synthwave Mix', artist: 'Cyber Pulse', duration: '1:24:30', plays: '45.2k', icon: 'IconKeyboard', type: 'playlist' },
+  { id: '2', title: 'Ambient Dreams Collection', artist: 'Deep Space', duration: '2:15:00', plays: '32.1k', icon: 'IconMoon', type: 'playlist' },
+  { id: '3', title: 'Techno Bunker Sessions', artist: 'Machine Grind', duration: '0:58:45', plays: '28.9k', icon: 'IconFactory', type: 'playlist' },
+  { id: '4', title: 'Chill Waves Vol. 3', artist: 'Ocean Drift', duration: '1:45:20', plays: '22.4k', icon: 'IconWave', type: 'playlist' },
+  { id: '5', title: 'Neon City Lights', artist: 'NightRunner', duration: '1:12:00', plays: '18.7k', icon: 'IconCity', type: 'album' },
+  { id: '6', title: 'Experimental Frequencies', artist: 'Glitch Core', duration: '0:45:30', plays: '15.2k', icon: 'IconDiamond', type: 'album' },
 ];
 
 const recentPlays = [
@@ -95,6 +106,18 @@ const LibraryScreen = () => {
     outputRange: [0, SIDEBAR_WIDTH],
   });
 
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'IconKeyboard': return <IconKeyboard size={36} color={C.onSurface} />;
+      case 'IconMoon': return <IconMoon size={36} color={C.onSurface} />;
+      case 'IconFactory': return <IconFactory size={36} color={C.onSurface} />;
+      case 'IconWave': return <IconWave size={36} color={C.onSurface} />;
+      case 'IconCity': return <IconCity size={36} color={C.onSurface} />;
+      case 'IconDiamond': return <IconDiamond size={36} color={C.onSurface} />;
+      default: return <IconMusic size={36} color={C.onSurface} />;
+    }
+  };
+
   const togglePlay = (id: string) => {
     setPlayingId(playingId === id ? null : id);
   };
@@ -110,7 +133,7 @@ const LibraryScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>📻</Text>
+                <IconRadio size={24} color={C.primary} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -171,7 +194,7 @@ const LibraryScreen = () => {
               <Text style={styles.statLabel}>Total Time</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={{ fontSize: 24 }}>⭐</Text>
+              <IconStar size={24} color={C.primary} />
               <Text style={styles.statValue}>24</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
@@ -186,7 +209,7 @@ const LibraryScreen = () => {
             {recentPlays.map((item) => (
               <TouchableOpacity key={item.id} style={styles.recentItem}>
                 <View style={styles.recentIcon}>
-                  <Text style={{ fontSize: 20 }}>🎵</Text>
+                  <IconMusic size={20} color={C.primary} />
                 </View>
                 <View style={styles.recentInfo}>
                   <Text style={styles.recentTitle}>{item.title}</Text>
@@ -210,9 +233,9 @@ const LibraryScreen = () => {
                 onPress={() => togglePlay(item.id)}
               >
                 <View style={styles.stationImage}>
-                  <Text style={styles.stationEmoji}>{item.image}</Text>
+                  {getIconComponent(item.icon)}
                   <View style={styles.stationOverlay}>
-                    {playingId === item.id ? <IconPause /> : <IconPlay />}
+                    {playingId === item.id ? <IconPause size={36} color={'#fff'} /> : <IconPlay size={36} color={'#fff'} />}
                   </View>
                 </View>
                 <View style={styles.cardBadge}>
@@ -234,7 +257,7 @@ const LibraryScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>🎵</Text>
+            <IconMusic size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Select a track</Text>
@@ -248,13 +271,13 @@ const LibraryScreen = () => {
         <View style={styles.playerCenter}>
           <View style={styles.playerControls}>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏮</Text>
+              <IconSkipPrev size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.playBtn}>
-              <IconPlay />
+              {playingId ? <IconPause size={30} color={C.onPrimary} /> : <IconPlay size={30} color={C.onPrimary} />}
             </TouchableOpacity>
             <TouchableOpacity>
-              <Text style={styles.skipText}>⏭</Text>
+              <IconSkipNext size={24} color={C.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
         </View>
@@ -511,9 +534,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stationEmoji: {
-    fontSize: 36,
-  },
   stationOverlay: {
     ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -586,9 +606,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playerArtText: {
-    fontSize: 28,
-  },
   playerInfo: {
     flex: 1,
   },
@@ -613,10 +630,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 24,
-  },
-  skipText: {
-    fontSize: 20,
-    color: C.onSurfaceVariant,
   },
   playBtn: {
     width: 52,

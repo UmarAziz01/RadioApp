@@ -222,11 +222,16 @@ const YouTubeEmbed = ({ videoId }: { videoId: string }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-// Ikon sederhana (tanpa dependency icon library tambahan)
+// Ikon (diimpor dari Icons.tsx)
 // ─────────────────────────────────────────────────────────────────────────
-const GearIcon = () => <Text style={{ fontSize: 20 }}>⚙️</Text>;
+import { 
+  IconSettings, 
+  IconTrash, 
+} from '../components/Icons';
+
+const GearIcon = () => <IconSettings size={20} color={C.onSurfaceVariant} />;
 const CloseIcon = () => <Text style={{ fontSize: 22, color: C.onSurface }}>✕</Text>;
-const TrashIcon = () => <Text style={{ fontSize: 16 }}>🗑️</Text>;
+const TrashIcon = () => <IconTrash size={16} color={C.onSurface} />;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Layar utama

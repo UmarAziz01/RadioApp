@@ -30,6 +30,7 @@ import {
   IconDownload,
   IconTrash,
   IconEdit,
+  IconClose,
 } from '../components/Icons';
 
 // ─── Warna ───
@@ -1205,7 +1206,7 @@ const RootRadioScreen = () => {
             <View style={styles.volumeDialogHeader}>
               <Text style={styles.volumeDialogTitle}>Volume</Text>
               <TouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn}>
-                <Text style={styles.volumeCloseBtnText}>✕</Text>
+                <IconClose size={18} color={C.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -1282,7 +1283,7 @@ const RootRadioScreen = () => {
                 {selectedRecording?.name ?? ''}
               </Text>
               <TouchableOpacity onPress={closeActionModal} style={styles.volumeCloseBtn}>
-                <Text style={styles.volumeCloseBtnText}>✕</Text>
+                <IconClose size={18} color={C.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -1754,11 +1755,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  volumeCloseBtnText: {
-    fontSize: 12,
-    color: C.textMuted,
-    fontWeight: '700',
   },
   volumePercentText: {
     fontSize: 18,

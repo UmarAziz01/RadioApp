@@ -80,10 +80,10 @@ const SettingsScreen = () => {
         <View style={styles.sidebarInner}>
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
-              <View style={styles.brandIcon}>
-                <Text style={{ fontSize: 24 }}>⚙️</Text>
-              </View>
-              <Text style={styles.brandText}>SonicFlow</Text>
+            <View style={styles.brandIcon}>
+              <IconSettings size={24} color={C.primary} />
+            </View>
+            <Text style={styles.brandText}>SonicFlow</Text>
             </View>
           </View>
 
@@ -223,7 +223,7 @@ const SettingsScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <Text style={styles.playerArtText}>⚙️</Text>
+            <IconSettings size={28} color={C.primary} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Settings</Text>
@@ -480,9 +480,6 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playerArtText: {
-    fontSize: 28,
   },
   playerInfo: {
     flex: 1,
