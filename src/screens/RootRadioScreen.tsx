@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Platform,
   TouchableOpacity,
+  TouchableOpacityProps,
   useWindowDimensions,
   StatusBar,
   ScrollView,
@@ -13,7 +14,15 @@ import {
   PanResponder,
   TextInput,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  createAudioPlayer,
+  useAudioRecorder,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+  RecordingPresets,
+  AudioPlayer,
+} from 'expo-audio';
+import { AudioRecorder } from 'expo-audio/build/AudioModule.types'; // Import AudioRecorder as a type if still needed for type hints, but not for instantiation
 import { useNavigation } from '../context/NavigationContext';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -181,6 +190,49 @@ function downloadFromBase64(base64: string, name: string, mimeType: string) {
   }
 }
 
+interface FocusableTouchableOpacityProps extends TouchableOpacityProps {
+  children: React.ReactNode;
+  focusStyle?: object;
+  hasTVPreferredFocus?: boolean;
+}
+
+const FocusableTouchableOpacity: React.FC<FocusableTouchableOpacityProps> = ({
+  children,
+  style,
+  focusStyle,
+  onPress,
+  onFocus,
+  onBlur,
+  hasTVPreferredFocus,
+  ...props
+}) => {
+  const [focused, setFocused] = useState(false);
+
+  const handleFocus = useCallback((e: any) => {
+    setFocused(true);
+    onFocus && onFocus(e);
+  }, [onFocus]);
+
+  const handleBlur = useCallback((e: any) => {
+    setFocused(false);
+    onBlur && onBlur(e);
+  }, [onBlur]);
+
+  return (
+    <TouchableOpacity
+      style={[style, focused && focusStyle]}
+      onPress={onPress}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      focusable={true}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      {...props}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+};
+
 const RootRadioScreen = () => {
   const { colors, isDark } = useTheme();
   const { setActiveScreen } = useNavigation();
@@ -203,7 +255,7 @@ const RootRadioScreen = () => {
   const stopwatchMarginBottom = isShort ? 10 : 20;
   const controlsMarginBottom = isShort ? 16 : 24;
 
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<AudioPlayer | null>(null);
   const [playerState, setPlayerState] = useState<'stopped' | 'playing' | 'paused'>('stopped');
   const [isLoading, setIsLoading] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -250,7 +302,11 @@ const RootRadioScreen = () => {
   // ── Recording refs ──
   const recordingStartRef = useRef<number | null>(null);
   const recordingTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const nativeRecordingRef = useRef<Audio.Recording | null>(null);
+  // Using useAudioRecorder hook here for native recording management
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY, (status) => {
+    console.log('AudioRecorder Status:', status);
+    // You might want to update some state based on status here
+  });
 
   // ── Web MediaRecorder refs ──
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -287,8 +343,8 @@ const RootRadioScreen = () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch {}
       }
-      if (nativeRecordingRef.current) {
-        nativeRecordingRef.current.stopAndUnloadAsync().catch(() => {});
+      if (audioRecorder) {
+        audioRecorder.stop().catch(() => {});
       }
     };
   }, []);
@@ -497,24 +553,18 @@ const RootRadioScreen = () => {
       try {
         if (wasStopped) {
           if (sound) {
-            await sound.stopAsync();
-            await sound.unloadAsync();
+            sound.remove();
           }
 
-          const { sound: newSound } = await Audio.Sound.createAsync(
-            { uri: STREAM_URL },
-            { shouldPlay: true, volume: isMuted ? 0 : volume },
-            (status) => {
-              if (status.isLoaded && status.isPlaying) {
-                setPlayerState('playing');
-                setIsLoading(false);
-              }
-            }
-          );
+          const newSound = createAudioPlayer(STREAM_URL);
+          newSound.volume = isMuted ? 0 : volume;
+          newSound.play();
+          setPlayerState('playing');
+          setIsLoading(false);
           setSound(newSound);
         } else {
           if (sound) {
-            await sound.playAsync();
+            sound.play();
             setPlayerState('playing');
             setIsLoading(false);
           }
@@ -555,7 +605,7 @@ const RootRadioScreen = () => {
 
     if (sound) {
       try {
-        await sound.pauseAsync();
+        sound.pause();
         setPlayerState('paused');
       } catch (e) {
         console.error('Failed to pause radio:', e);
@@ -578,8 +628,7 @@ const RootRadioScreen = () => {
 
     if (sound) {
       try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        sound.remove();
         setSound(null);
       } catch (e) {
         console.error('Failed to stop radio:', e);
@@ -690,17 +739,17 @@ const RootRadioScreen = () => {
           });
         }
       } else {
-        if (nativeRecordingRef.current) {
+        if (audioRecorder) {
           const nativeEndTime = Date.now();
           const nativeStartTime = recordingStartRef.current ?? nativeEndTime;
-          const rawUri = nativeRecordingRef.current.getURI();
-          await nativeRecordingRef.current.stopAndUnloadAsync();
-          nativeRecordingRef.current = null;
+          const rawUri = audioRecorder.uri;
+          await audioRecorder.stop();
+          // audioRecorder is managed by the hook, so we don't nullify it.
           if (rawUri) {
             await saveNativeRecording(rawUri, nativeStartTime, nativeEndTime);
           }
         }
-        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+        await setAudioModeAsync({ allowsRecording: false });
       }
     } catch (e) {
       console.error('Gagal menghentikan rekaman:', e);
@@ -760,23 +809,21 @@ const RootRadioScreen = () => {
         mediaRecorder.start(1000);
         mediaRecorderRef.current = mediaRecorder;
       } else {
-        const perm = await Audio.requestPermissionsAsync();
+        const perm = await requestRecordingPermissionsAsync();
         if (!perm.granted) {
           setRecordingError('Izin mikrofon ditolak.');
           setIsRecordingBusy(false);
           return;
         }
 
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
         });
 
-        const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        nativeRecordingRef.current = recording;
+        // Use the audioRecorder instance from the hook
+        await audioRecorder.prepareToRecordAsync();
+        await audioRecorder.record();
       }
 
       recordingStartRef.current = Date.now();
@@ -851,7 +898,7 @@ const RootRadioScreen = () => {
       }
     } else {
       if (sound) {
-        sound.setVolumeAsync(vol).catch(() => {});
+        sound.volume = vol;
       }
     }
   }, [sound]);
@@ -1023,7 +1070,7 @@ const RootRadioScreen = () => {
           )}
 
           <View style={[styles.controlsRow, { marginBottom: controlsMarginBottom }]}>
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={[
                 styles.secondaryButton,
                 { width: stopButtonSize, height: stopButtonSize, borderRadius: stopButtonSize / 2 },
@@ -1034,9 +1081,9 @@ const RootRadioScreen = () => {
               disabled={playerState === 'stopped'}
             >
               <IconStop size={26} color={C.onSurface} />
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
 
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={[
                 styles.playButton,
                 { width: playButtonSize, height: playButtonSize, borderRadius: playButtonSize / 2 },
@@ -1053,9 +1100,9 @@ const RootRadioScreen = () => {
               ) : (
                 <IconPlay size={44} color={C.bg} />
               )}
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
 
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={[
                 styles.secondaryButton,
                 { width: recordButtonSize, height: recordButtonSize, borderRadius: recordButtonSize / 2 },
@@ -1071,7 +1118,7 @@ const RootRadioScreen = () => {
               ) : (
                 <View style={styles.recDotIcon} />
               )}
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
           </View>
 
           <Text style={styles.statusText}>
@@ -1097,7 +1144,7 @@ const RootRadioScreen = () => {
                 ✓ Tersimpan: {lastRecordingName}
               </Text>
               {Platform.OS !== 'web' && lastRecordingUri && (
-                <TouchableOpacity
+                <FocusableTouchableOpacity
                   onPress={() =>
                     Sharing.isAvailableAsync().then((can) => {
                       if (can && lastRecordingUri) {
@@ -1108,7 +1155,7 @@ const RootRadioScreen = () => {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.savedShareLink}>Bagikan lagi</Text>
-                </TouchableOpacity>
+                </FocusableTouchableOpacity>
               )}
             </View>
           )}
@@ -1120,7 +1167,7 @@ const RootRadioScreen = () => {
               {savedWebRecordings.map((rec) => (
                 <View key={rec.timestamp} style={styles.recordingItem}>
                   {/* ── Play / Pause button ── */}
-                  <TouchableOpacity
+                  <FocusableTouchableOpacity
                     style={styles.recPlayBtn}
                     onPress={() => togglePlayRecording(rec)}
                     activeOpacity={0.75}
@@ -1130,7 +1177,7 @@ const RootRadioScreen = () => {
                     ) : (
                       <IconPlay size={14} color={C.primary} />
                     )}
-                  </TouchableOpacity>
+                  </FocusableTouchableOpacity>
 
                   {/* ── Nama file (horizontal scroll) + meta ── */}
                   <View style={styles.recordingItemInfo}>
@@ -1150,13 +1197,13 @@ const RootRadioScreen = () => {
                   </View>
 
                   {/* ── Action button (three dots) ── */}
-                  <TouchableOpacity
+                  <FocusableTouchableOpacity
                     style={styles.recActionBtn}
                     onPress={() => openActionModal(rec)}
                     activeOpacity={0.75}
                   >
                     <IconMoreVertical size={18} color={C.onSurfaceVariant} />
-                  </TouchableOpacity>
+                  </FocusableTouchableOpacity>
                 </View>
               ))}
             </View>
@@ -1164,7 +1211,7 @@ const RootRadioScreen = () => {
         </View>
       </ScrollView>
         {/* ── Floating Volume Button (kanan layar) ── */}
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.floatingVolumeBtn}
           onPress={() => setShowVolumeModal(true)}
           activeOpacity={0.8}
@@ -1174,16 +1221,16 @@ const RootRadioScreen = () => {
           ) : (
             <IconVolume size={22} color={C.primary} />
           )}
-        </TouchableOpacity>
+        </FocusableTouchableOpacity>
 
         {/* ── Floating Navigation Button (bawah volume) ── */}
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.floatingNavBtn}
           onPress={() => setActiveScreen('stream')}
           activeOpacity={0.8}
         >
           <Text style={styles.floatingNavBtnText}>stream</Text>
-        </TouchableOpacity>
+        </FocusableTouchableOpacity>
 
       {/* ── Volume Modal ── */}
       <Modal
@@ -1192,12 +1239,12 @@ const RootRadioScreen = () => {
         animationType="fade"
         onRequestClose={() => setShowVolumeModal(false)}
       >
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.volumeModalOverlay}
           activeOpacity={1}
           onPress={() => setShowVolumeModal(false)}
         >
-          <TouchableOpacity
+          <FocusableTouchableOpacity
             style={styles.volumeDialog}
             activeOpacity={1}
             onPress={() => {}}
@@ -1205,9 +1252,9 @@ const RootRadioScreen = () => {
             {/* Dialog Header */}
             <View style={styles.volumeDialogHeader}>
               <Text style={styles.volumeDialogTitle}>Volume</Text>
-              <TouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn}>
+              <FocusableTouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn}>
                 <IconClose size={18} color={C.textMuted} />
-              </TouchableOpacity>
+              </FocusableTouchableOpacity>
             </View>
 
             {/* Percentage */}
@@ -1239,7 +1286,7 @@ const RootRadioScreen = () => {
             </View>
 
             {/* Mute Button */}
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={[
                 styles.muteButton,
                 isMuted && styles.muteButtonActive,
@@ -1255,9 +1302,9 @@ const RootRadioScreen = () => {
               <Text style={[styles.muteButtonText, isMuted && styles.muteButtonTextActive]}>
                 {isMuted ? 'Unmute' : 'Mute'}
               </Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
+            </FocusableTouchableOpacity>
+          </FocusableTouchableOpacity>
+        </FocusableTouchableOpacity>
       </Modal>
 
       {/* ── Action Modal (Unduh / Hapus / Rename) ── */}
@@ -1267,12 +1314,12 @@ const RootRadioScreen = () => {
         animationType="fade"
         onRequestClose={closeActionModal}
       >
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.actionModalOverlay}
           activeOpacity={1}
           onPress={closeActionModal}
         >
-          <TouchableOpacity
+          <FocusableTouchableOpacity
             style={styles.actionDialog}
             activeOpacity={1}
             onPress={() => {}}
@@ -1282,40 +1329,40 @@ const RootRadioScreen = () => {
               <Text style={styles.actionDialogTitle} numberOfLines={1}>
                 {selectedRecording?.name ?? ''}
               </Text>
-              <TouchableOpacity onPress={closeActionModal} style={styles.volumeCloseBtn}>
+              <FocusableTouchableOpacity onPress={closeActionModal} style={styles.volumeCloseBtn}>
                 <IconClose size={18} color={C.textMuted} />
-              </TouchableOpacity>
+              </FocusableTouchableOpacity>
             </View>
 
             {/* Unduh */}
-            <TouchableOpacity style={styles.actionRow} onPress={handleActionDownload} activeOpacity={0.75}>
+            <FocusableTouchableOpacity style={styles.actionRow} onPress={handleActionDownload} activeOpacity={0.75}>
               <View style={styles.actionIconBox}>
                 <IconDownload size={18} color={C.primary} />
               </View>
               <Text style={styles.actionRowText}>Unduh</Text>
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
 
             <View style={styles.actionDivider} />
 
             {/* Rename */}
-            <TouchableOpacity style={styles.actionRow} onPress={handleActionRename} activeOpacity={0.75}>
+            <FocusableTouchableOpacity style={styles.actionRow} onPress={handleActionRename} activeOpacity={0.75}>
               <View style={styles.actionIconBox}>
                 <IconEdit size={18} color={C.onSurfaceVariant} />
               </View>
               <Text style={styles.actionRowText}>Rename</Text>
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
 
             <View style={styles.actionDivider} />
 
             {/* Hapus */}
-            <TouchableOpacity style={styles.actionRow} onPress={handleActionDelete} activeOpacity={0.75}>
+            <FocusableTouchableOpacity style={styles.actionRow} onPress={handleActionDelete} activeOpacity={0.75}>
               <View style={[styles.actionIconBox, styles.actionIconBoxDanger]}>
                 <IconTrash size={18} color={C.recRed} />
               </View>
               <Text style={[styles.actionRowText, styles.actionRowTextDanger]}>Hapus</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
+            </FocusableTouchableOpacity>
+          </FocusableTouchableOpacity>
+        </FocusableTouchableOpacity>
       </Modal>
 
       {/* ── Rename Modal ── */}
@@ -1325,12 +1372,12 @@ const RootRadioScreen = () => {
         animationType="fade"
         onRequestClose={handleRenameCancel}
       >
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.actionModalOverlay}
           activeOpacity={1}
           onPress={handleRenameCancel}
         >
-          <TouchableOpacity
+          <FocusableTouchableOpacity
             style={styles.renameDialog}
             activeOpacity={1}
             onPress={() => {}}
@@ -1346,24 +1393,24 @@ const RootRadioScreen = () => {
               selectTextOnFocus
             />
             <View style={styles.renameActions}>
-              <TouchableOpacity
+              <FocusableTouchableOpacity
                 style={styles.renameCancelBtn}
                 onPress={handleRenameCancel}
                 activeOpacity={0.8}
               >
                 <Text style={styles.renameCancelText}>Batal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </FocusableTouchableOpacity>
+              <FocusableTouchableOpacity
                 style={[styles.renameConfirmBtn, !renameValue.trim() && { opacity: 0.4 }]}
                 onPress={handleRenameConfirm}
                 activeOpacity={0.8}
                 disabled={!renameValue.trim()}
               >
                 <Text style={styles.renameConfirmText}>Simpan</Text>
-              </TouchableOpacity>
+              </FocusableTouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </FocusableTouchableOpacity>
+        </FocusableTouchableOpacity>
       </Modal>
     </View>
   );
@@ -1955,6 +2002,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: C.bg,
+  },
+
+  // Focus Styles
+  focusedItem: {
+    borderColor: C.primary,
+    borderWidth: 2,
+    transform: [{ scale: 1.05 }],
+  },
+  focusedButton: {
+    borderColor: C.primary,
+    borderWidth: 2,
+    backgroundColor: 'rgba(0, 219, 233, 0.2)',
+    transform: [{ scale: 1.05 }],
+  },
+  focusedFloatingButton: {
+    borderColor: C.primary,
+    borderWidth: 3,
+    transform: [{ scale: 1.1 }],
+  },
+  focusedOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  focusedDialog: {
+    borderColor: C.primary,
+    borderWidth: 2,
+  },
+  focusedCloseButton: {
+    borderColor: C.primary,
+    borderWidth: 2,
+  },
+  focusedDeleteButton: {
+    borderColor: C.recRed,
+    borderWidth: 2,
   },
 });
 

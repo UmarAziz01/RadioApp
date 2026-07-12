@@ -9,16 +9,24 @@ import {
   Dimensions,
   StatusBar,
   TextInput,
+  Image,
+  AppState,
   Animated as RNAnimated,
 } from 'react-native';
-import { Audio } from 'expo-av';
+// Audio playback pakai expo-audio (bukan expo-av).
+// NOTE (config native untuk background audio yang sesungguhnya):
+//   app.json -> ios.infoPlist.UIBackgroundModes: ["audio"]
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  AudioPlayer,
+} from 'expo-audio';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../utils/responsive';
 import { useNavigation } from '../context/NavigationContext';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { 
   IconDashboard,
-  IconRadio,
   IconPlay,
   IconPause,
   IconStop,
@@ -48,6 +56,20 @@ import {
   InsightsNavGroup, 
   FooterNavGroup 
 } from '../components/NavMenu';
+
+// ─── Aset ikon radio (favicon dipakai sebagai logo/ikon radio di seluruh layar) ───
+const RADIO_LOGO = require('../assets/favicon.png');
+
+const RadioIcon = ({ size = 24, style, rounded = true }: { size?: number; style?: any; rounded?: boolean }) => (
+  <Image
+    source={RADIO_LOGO}
+    resizeMode="contain"
+    style={[
+      { width: size, height: size, borderRadius: rounded ? size * 0.22 : 0 },
+      style,
+    ]}
+  />
+);
 
 // ─── Warna ───
 const C = {
@@ -83,8 +105,8 @@ const SIDEBAR_WIDTH = 280;
 // ─── COMPONENT UTAMA ───
 const LiveScreen = () => {
   const { colors, isDark } = useTheme();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { activeScreen: activeNav, setActiveScreen: setActiveNav } = useNavigation();
   const [currentTime] = useState('03:42');
@@ -101,41 +123,94 @@ const LiveScreen = () => {
     setSidebarOpen(!sidebarOpen);
   }, [sidebarOpen, sidebarAnim]);
 
+  // Player audio native (expo-audio) disimpan di ref supaya tetap hidup
+  // lintas render dan bisa terus berputar di latar belakang / layar mati.
+  const nativePlayerRef = useRef<AudioPlayer | null>(null);
+  const nativeSubscriptionRef = useRef<{ remove: () => void } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamUrl = 'https://pu.klikhost.com/proxy/suaramuslim/stream';
 
-  // Cleanup
+  // Konfigurasi audio session sekali di awal supaya siaran tetap jalan
+  // walau app pindah ke latar belakang atau layar dikunci.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+    }).catch((e) => console.error('Gagal mengatur audio mode:', e));
+  }, []);
+
+  // Beberapa OS mereset audio session saat app kembali aktif dari
+  // background/lock screen — pasang ulang supaya tetap konsisten.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setAudioModeAsync({
+          playsInSilentMode: true,
+          shouldPlayInBackground: true,
+          interruptionMode: 'duckOthers',
+        }).catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Cleanup saat unmount
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+      if (Platform.OS === 'web') {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+      } else {
+        nativeSubscriptionRef.current?.remove();
+        nativeSubscriptionRef.current = null;
+        if (nativePlayerRef.current) {
+          nativePlayerRef.current.pause();
+          nativePlayerRef.current.remove();
+          nativePlayerRef.current = null;
+        }
       }
     };
   }, []);
 
   const playRadio = async () => {
+    setIsLoading(true);
+
     if (Platform.OS === 'web') {
       try {
         const audio = new (window as any).Audio(streamUrl) as HTMLAudioElement;
         audioRef.current = audio;
+        audio.addEventListener('playing', () => setIsLoading(false));
+        audio.addEventListener('error', (e) => {
+          console.error('Failed to play radio (web):', e);
+          setIsLoading(false);
+        });
         await audio.play();
         setIsPlaying(true);
       } catch (e) {
         console.error('Failed to play radio (web):', e);
+        setIsLoading(false);
       }
       return;
     }
 
     try {
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: streamUrl },
-        { shouldPlay: true }
-      );
-      setSound(newSound);
-      setIsPlaying(true);
+      const player = createAudioPlayer({ uri: streamUrl });
+      nativePlayerRef.current = player;
+      nativeSubscriptionRef.current = player.addListener('playbackStatusUpdate', (status) => {
+        if (status.playing) {
+          setIsPlaying(true);
+          setIsLoading(false);
+        }
+      });
+      player.play();
     } catch (e) {
       console.error('Failed to play radio:', e);
+      setIsLoading(false);
     }
   };
 
@@ -154,16 +229,19 @@ const LiveScreen = () => {
       return;
     }
 
-    if (sound) {
-      try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      } catch (e) {
-        console.error('Failed to stop radio:', e);
-      } finally {
-        setSound(null);
-        setIsPlaying(false);
+    try {
+      nativeSubscriptionRef.current?.remove();
+      nativeSubscriptionRef.current = null;
+      if (nativePlayerRef.current) {
+        nativePlayerRef.current.pause();
+        nativePlayerRef.current.remove();
+        nativePlayerRef.current = null;
       }
+    } catch (e) {
+      console.error('Failed to stop radio:', e);
+    } finally {
+      setIsPlaying(false);
+      setIsLoading(false);
     }
   };
 
@@ -179,7 +257,7 @@ const LiveScreen = () => {
       case 'IconWave': return <IconWave size={36} color={C.onSurface} />;
       case 'IconFactory': return <IconFactory size={36} color={C.onSurface} />;
       case 'IconDiamond': return <IconDiamond size={36} color={C.onSurface} />;
-      default: return <IconRadio size={36} color={C.onSurface} />;
+      default: return <RadioIcon size={36} />;
     }
   };
 
@@ -195,7 +273,7 @@ const LiveScreen = () => {
           <View style={styles.sidebarHeader}>
             <View style={styles.brandRow}>
               <View style={styles.brandIcon}>
-                <IconRadio size={24} color={C.primary} />
+                <RadioIcon size={24} />
               </View>
               <Text style={styles.brandText}>SonicFlow</Text>
             </View>
@@ -212,7 +290,7 @@ const LiveScreen = () => {
       <View style={[styles.mainContent, !sidebarOpen && styles.mainContentFull]}>
         {/* Navbar */}
         <View style={styles.navbar}>
-          <TouchableOpacity onPress={toggleSidebar} style={styles.navbarToggle}>
+          <TouchableOpacity onPress={toggleSidebar} style={styles.navbarToggle} activeOpacity={0.7}>
             <IconMenu size={22} />
           </TouchableOpacity>
 
@@ -221,10 +299,10 @@ const LiveScreen = () => {
           </View>
 
           <View style={styles.navbarActions}>
-            <TouchableOpacity style={styles.navbarBtn}>
+            <TouchableOpacity style={styles.navbarBtn} activeOpacity={0.7}>
               <IconSearch />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navbarBtn}>
+            <TouchableOpacity style={styles.navbarBtn} activeOpacity={0.7}>
               <IconSettings />
             </TouchableOpacity>
             <View style={styles.avatar}>
@@ -261,9 +339,9 @@ const LiveScreen = () => {
               <View style={styles.heroLogoSection}>
                 <View style={styles.heroLogoContainer}>
                   <View style={styles.heroGlow} />
-                    <View style={styles.heroLogo}>
-                      <IconRadio size={72} color={C.primary} />
-                    </View>
+                  <View style={styles.heroLogo}>
+                    <RadioIcon size={104} style={styles.heroLogoImage} />
+                  </View>
                 </View>
               </View>
 
@@ -293,7 +371,7 @@ const LiveScreen = () => {
           {/* Live Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <IconRadio />
+              <RadioIcon size={22} rounded={false} />
               <Text style={styles.statValue}>4</Text>
               <Text style={styles.statLabel}>Live Stations</Text>
             </View>
@@ -319,7 +397,7 @@ const LiveScreen = () => {
 
           <View style={styles.stationGrid}>
             {liveStations.map((station) => (
-              <TouchableOpacity key={station.id} style={styles.stationCard}>
+              <TouchableOpacity key={station.id} style={styles.stationCard} activeOpacity={0.85}>
                 <View style={styles.stationImage}>
                   {getIconComponent(station.icon)}
                   <View style={styles.stationOverlay}>
@@ -342,32 +420,34 @@ const LiveScreen = () => {
       <View style={styles.bottomPlayer}>
         <View style={styles.playerLeft}>
           <View style={styles.playerArt}>
-            <IconRadio size={28} color={C.primary} />
+            <RadioIcon size={32} />
           </View>
           <View style={styles.playerInfo}>
             <Text style={styles.playerTrack}>Cyber-Pulse Live</Text>
             <Text style={styles.playerArtist}>Delta Frequency - Interstellar Mix</Text>
           </View>
-          <TouchableOpacity style={styles.playerHeart}>
+          <TouchableOpacity style={styles.playerHeart} activeOpacity={0.7}>
             <IconHeart />
           </TouchableOpacity>
         </View>
 
         <View style={styles.playerCenter}>
           <View style={styles.playerControls}>
-            <TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7}>
               <IconSkipPrev />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.playBtn}
               onPress={isPlaying ? stopRadio : playRadio}
+              activeOpacity={0.85}
+              disabled={isLoading}
             >
               {isPlaying ? <IconPause /> : <IconPlay />}
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7}>
               <IconSkipNext />
             </TouchableOpacity>
-            <TouchableOpacity onPress={stopRadio}>
+            <TouchableOpacity onPress={stopRadio} activeOpacity={0.7}>
               <IconStop />
             </TouchableOpacity>
           </View>
@@ -376,7 +456,7 @@ const LiveScreen = () => {
             <View style={styles.progressTrackSmall}>
               <View style={[styles.progressBarSmall, { width: '45%' }]} />
             </View>
-            <Text style={styles.progressTime}>LIVE</Text>
+            <Text style={styles.progressTime}>{isLoading ? 'BUFFERING' : 'LIVE'}</Text>
           </View>
         </View>
 
@@ -385,10 +465,10 @@ const LiveScreen = () => {
           <View style={styles.volumeTrack}>
             <View style={[styles.volumeBar, { width: '70%' }]} />
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7}>
             <IconQueue />
           </TouchableOpacity>
-          <TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7}>
             <IconSignal />
           </TouchableOpacity>
         </View>
@@ -431,6 +511,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,219,233,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,219,233,0.25)',
   },
   brandText: {
     fontSize: 20,
@@ -546,6 +628,11 @@ const styles = StyleSheet.create({
     backgroundColor: C.glassBg,
     borderWidth: 1,
     borderColor: C.border,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 32,
+    elevation: 8,
   },
   heroBg: {
     ...(StyleSheet.absoluteFill as object),
@@ -581,6 +668,14 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  heroLogoImage: {
+    borderRadius: 20,
   },
   heroInfo: {
     flex: 1,
@@ -749,6 +844,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     gap: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
   playerLeft: {
     flexDirection: 'row',
@@ -765,6 +865,7 @@ const styles = StyleSheet.create({
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   playerInfo: {
     flex: 1,
@@ -799,6 +900,11 @@ const styles = StyleSheet.create({
     backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
   playerProgress: {
     flexDirection: 'row',

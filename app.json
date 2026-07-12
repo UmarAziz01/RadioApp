@@ -1,22 +1,17 @@
 {
   "expo": {
     "name": "Radio App",
-    "slug": "radio-app",
+    "slug": "umaraziz",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/favicon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled":true,
-    "splash": {
-      "image": "./assets/favicon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#6366f1"
-    },
     "ios": {
-      "supportsTablet":true,
+      "supportsTablet": true,
       "bundleIdentifier": "com.radioapp",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Agar aplikasi dapat merekam audio dari mikrofon."
+        "NSMicrophoneUsageDescription": "Agar aplikasi dapat merekam audio dari mikrofon.",
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -25,14 +20,34 @@
         "backgroundColor": "#6366f1"
       },
       "package": "com.radioapp",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
-      "expo-sharing"
-    ]
+      "expo-sharing",
+      "expo-font",
+      "expo-audio",
+      "expo-video",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/favicon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#6366f1"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9ebed38a-3ca4-4966-a21f-a9191f9a8d5c"
+      }
+    },
+    "owner": "umaraziz01s-team"
   }
 }

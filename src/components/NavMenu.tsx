@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { 
   IconRadio, 
@@ -28,30 +28,40 @@ interface NavItemProps {
   active?: boolean;
   onPress?: () => void;
   style?: { color?: string };
+  hasTVPreferredFocus?: boolean;
 }
 
 // Navigation item component
-const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onPress, style }) => (
-  <TouchableOpacity
-    style={[
-      styles.navItem,
-      active && styles.navItemActive,
-      style && { borderColor: style.color || 'transparent' },
-    ]}
-    onPress={onPress}
-  >
-    <View style={[styles.navIcon, active && styles.navIconActive]}>{icon}</View>
-    <Text
+const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onPress, style, hasTVPreferredFocus }) => {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TouchableOpacity
       style={[
-        styles.navLabel,
-        active && styles.navLabelActive,
-        style && { color: style.color },
+        styles.navItem,
+        active && styles.navItemActive,
+        focused && styles.navItemFocused,
+        style && { borderColor: style.color || 'transparent' },
       ]}
+      onPress={onPress}
+      focusable={true}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
     >
-      {label}
-    </Text>
-  </TouchableOpacity>
-);
+      <View style={[styles.navIcon, active && styles.navIconActive]}>{icon}</View>
+      <Text
+        style={[
+          styles.navLabel,
+          active && styles.navLabelActive,
+          style && { color: style.color },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 // Navigation group interface
 interface NavGroupProps {
@@ -132,6 +142,7 @@ const NavMenu: React.FC<NavMenuProps> = ({ activeNav, onNavChange }) => {
           label="Root"
           active={contextActiveNav === 'root'}
           onPress={() => contextOnNavChange && contextOnNavChange('root')}
+          hasTVPreferredFocus={true}
         />
         <NavItem
           icon={<IconRadio />}
@@ -210,6 +221,7 @@ export const MainNavGroup: React.FC<NavMenuProps> = ({ activeNav, onNavChange })
         label="Root"
         active={contextActiveNav === 'root'}
         onPress={() => contextOnNavChange && contextOnNavChange('root')}
+        hasTVPreferredFocus={true}
       />
       <NavItem
         icon={<IconRadio />}
@@ -320,6 +332,10 @@ const styles = StyleSheet.create({
   },
   navItemActive: {
     backgroundColor: 'rgba(0,219,233,0.12)',
+  },
+  navItemFocused: {
+    borderColor: C.primary,
+    borderWidth: 2,
   },
   navIcon: {
     width: 22,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Platform,
   TouchableOpacity,
+  TouchableOpacityProps,
   useWindowDimensions,
   StatusBar,
   ScrollView,
@@ -14,11 +15,18 @@ import {
   Alert,
   PanResponder,
 } from 'react-native';
-// Add import for Audio
+// Audio playback is handled with expo-audio (no expo-av dependency)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useTheme } from '@/theme/ThemeContext';
-import { Audio } from 'expo-av';
+import {
+  createAudioPlayer,
+  useAudioRecorder,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+  RecordingPresets,
+  AudioPlayer,
+} from 'expo-audio';
 import { useNavigation } from '../context/NavigationContext';
 import { IconVolume, IconVolumeX } from '../components/Icons';
 
@@ -71,8 +79,6 @@ const DEFAULT_CHANNELS: Channel[] = [
     description: 'Masjid an-Nabawi, Madinah',
     streams: [
       { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/rHWSRMcGGBQ', audioUrl: '', audioStreamUrl: '' },
-      // Link ini bukan link video (hanya URL beranda YouTube dgn parameter tracking,
-      // tanpa video ID) — ganti lewat dialog ⚙️ Pengaturan dengan link video yang valid.
       { id: uid(), label: 'Stream 2', youtubeUrl: '', audioUrl: '', audioStreamUrl: '' },
     ],
   },
@@ -81,7 +87,6 @@ const DEFAULT_CHANNELS: Channel[] = [
     name: 'Al-Aqsa',
     description: 'Masjid al-Aqsa, Yerusalem',
     streams: [
-      // Link yang diberikan juga tidak mengandung video ID — isi lewat ⚙️ Pengaturan.
       { id: uid(), label: 'Stream 1', youtubeUrl: '', audioUrl: '', audioStreamUrl: '' },
     ],
   },
@@ -120,7 +125,6 @@ function extractYoutubeId(url: string): string | null {
     const m = trimmed.match(re);
     if (m && m[1]) return m[1];
   }
-  // Kalau user langsung paste video ID mentah (11 karakter khas YouTube)
   if (/^[a-zA-Z0-9_-]{10,12}$/.test(trimmed)) return trimmed;
   return null;
 }
@@ -143,28 +147,20 @@ const C = {
 const BREAKPOINT_TABLET = 600;
 const BREAKPOINT_DESKTOP = 1024;
 
-// ─── Gabungkan data tersimpan dengan default terbaru ───
-// Tujuannya: URL default selalu muncul di Settings & tersimpan otomatis,
-// tanpa menghapus stream tambahan yang sudah dibuat/diedit sendiri oleh user.
 function mergeWithDefaults(stored: Channel[]): Channel[] {
   const merged: (Channel | null)[] = DEFAULT_CHANNELS.map((defaultCh) => {
     const storedCh = stored.find((c) => c.id === defaultCh.id);
-    // Kalau grup default ini sudah tidak ada di storage, berarti user pernah
-    // menghapusnya sendiri → jangan dimunculkan lagi.
     if (!storedCh) return null;
 
     const mergedStreams: StreamSource[] = defaultCh.streams.map((defaultStream) => {
       const storedStream = storedCh.streams.find((s) => s.label === defaultStream.label);
-      if (!storedStream) return defaultStream; // stream default belum ada → tambahkan
-      // Kalau URL tersimpan kosong tapi default punya URL, isi otomatis.
-      // Kalau user sudah isi URL sendiri, jangan ditimpa.
+      if (!storedStream) return defaultStream;
       const youtubeUrl = storedStream.youtubeUrl?.trim() ? storedStream.youtubeUrl : defaultStream.youtubeUrl;
       const audioUrl = storedStream.audioUrl?.trim() ? storedStream.audioUrl : defaultStream.audioUrl;
       const audioStreamUrl = storedStream.audioStreamUrl?.trim() ? storedStream.audioStreamUrl : defaultStream.audioStreamUrl;
       return { ...storedStream, youtubeUrl, audioUrl, audioStreamUrl };
     });
 
-    // Tambahkan stream ekstra yang dibuat sendiri oleh user (tidak ada di default)
     const extraStreams = storedCh.streams.filter(
       (s) => !defaultCh.streams.some((d) => d.label === s.label)
     );
@@ -173,8 +169,6 @@ function mergeWithDefaults(stored: Channel[]): Channel[] {
   });
 
   const mergedChannels = merged.filter((c): c is Channel => c !== null);
-
-  // Tambahkan grup ekstra yang dibuat sendiri oleh user (custom, di luar 4 default)
   const extraChannels = stored.filter((c) => !DEFAULT_CHANNELS.some((d) => d.id === c.id));
 
   return [...mergedChannels, ...extraChannels];
@@ -204,7 +198,6 @@ const YouTubeEmbed = ({ videoId }: { videoId: string }) => {
   }, [embedUrl]);
 
   if (Platform.OS === 'web') {
-    // @ts-ignore - ref dipakai untuk manipulasi DOM langsung (lihat useEffect di atas)
     return <View ref={webContainerRef} style={styles.embedFill} />;
   }
 
@@ -221,9 +214,6 @@ const YouTubeEmbed = ({ videoId }: { videoId: string }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────
-// Ikon (diimpor dari Icons.tsx)
-// ─────────────────────────────────────────────────────────────────────────
 import { 
   IconSettings, 
   IconTrash, 
@@ -233,9 +223,49 @@ const GearIcon = () => <IconSettings size={20} color={C.onSurfaceVariant} />;
 const CloseIcon = () => <Text style={{ fontSize: 22, color: C.onSurface }}>✕</Text>;
 const TrashIcon = () => <IconTrash size={16} color={C.onSurface} />;
 
-// ─────────────────────────────────────────────────────────────────────────
-// Layar utama
-// ─────────────────────────────────────────────────────────────────────────
+interface FocusableTouchableOpacityProps extends TouchableOpacityProps {
+  children: React.ReactNode;
+  focusStyle?: object;
+  hasTVPreferredFocus?: boolean;
+}
+
+const FocusableTouchableOpacity: React.FC<FocusableTouchableOpacityProps> = ({
+  children,
+  style,
+  focusStyle,
+  onPress,
+  onFocus,
+  onBlur,
+  hasTVPreferredFocus,
+  ...props
+}) => {
+  const [focused, setFocused] = useState(false);
+
+  const handleFocus = useCallback((e: any) => {
+    setFocused(true);
+    onFocus && onFocus(e);
+  }, [onFocus]);
+
+  const handleBlur = useCallback((e: any) => {
+    setFocused(false);
+    onBlur && onBlur(e);
+  }, [onBlur]);
+
+  return (
+    <TouchableOpacity
+      style={[style, focused && focusStyle]}
+      onPress={onPress}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      focusable={true}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      {...props}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+};
+
 const LiveStreamsYouTubeScreen = () => {
   const { width: winWidth } = useWindowDimensions();
   const isDesktop = winWidth >= BREAKPOINT_DESKTOP;
@@ -250,7 +280,10 @@ const LiveStreamsYouTubeScreen = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [previousVolume, setPreviousVolume] = useState(1.0);
   const [showVolumeModal, setShowVolumeModal] = useState(false);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  // Native audio playback is handled by an expo-audio AudioPlayer kept in a ref,
+  // since the source changes dynamically and isn't tied to a single component's lifetime.
+  const nativePlayerRef = useRef<AudioPlayer | null>(null);
+  const nativeSubscriptionRef = useRef<{ remove: () => void } | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playerState, setPlayerState] = useState<'stopped' | 'playing' | 'paused'>('stopped');
   const [isLoading, setIsLoading] = useState(false);
@@ -260,7 +293,16 @@ const LiveStreamsYouTubeScreen = () => {
   const [streamIndex, setStreamIndex] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
 
-  // ── Load pengaturan tersimpan, digabung dengan default terbaru ──
+  // Configure audio mode once so streams keep playing in the background / silent mode.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+    }).catch((e) => console.error('Gagal mengatur audio mode:', e));
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -273,7 +315,6 @@ const LiveStreamsYouTubeScreen = () => {
             setChannels(DEFAULT_CHANNELS);
           }
         } else {
-          // Belum ada data sama sekali → langsung pakai default
           setChannels(DEFAULT_CHANNELS);
         }
       } catch (e) {
@@ -285,7 +326,6 @@ const LiveStreamsYouTubeScreen = () => {
     })();
   }, []);
 
-  // ── Simpan otomatis tiap kali channels berubah ──
   useEffect(() => {
     if (!loaded) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(channels)).catch((e) =>
@@ -320,26 +360,27 @@ const LiveStreamsYouTubeScreen = () => {
       } catch (e) {
         console.error('Failed to stop stream audio (web):', e);
       }
-    }
-
-    if (sound) {
+    } else {
       try {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
+        nativeSubscriptionRef.current?.remove();
+        nativeSubscriptionRef.current = null;
+        if (nativePlayerRef.current) {
+          nativePlayerRef.current.pause();
+          nativePlayerRef.current.remove();
+          nativePlayerRef.current = null;
+        }
       } catch (e) {
         console.error('Failed to stop stream audio:', e);
       }
     }
     setPlayerState('stopped');
-  }, [sound]);
+  }, []);
 
   const playStreamAudio = useCallback(async (url: string) => {
     if (!url) return;
     setIsLoading(true);
 
     try {
-      // Stop current sound first
       await stopStreamAudio();
 
       if (Platform.OS === 'web') {
@@ -360,17 +401,21 @@ const LiveStreamsYouTubeScreen = () => {
 
         await audio.play();
       } else {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: url },
-          { shouldPlay: true, volume: isMuted ? 0 : volume },
-          (status) => {
-            if (status.isLoaded && status.isPlaying) {
-              setPlayerState('playing');
-              setIsLoading(false);
-            }
+        const player = createAudioPlayer({ uri: url });
+        player.volume = isMuted ? 0 : volume;
+        nativePlayerRef.current = player;
+
+        nativeSubscriptionRef.current = player.addListener('playbackStatusUpdate', (status) => {
+          if (status.playing) {
+            setPlayerState('playing');
+            setIsLoading(false);
           }
-        );
-        setSound(newSound);
+          if (status.isLoaded === false || (status as any).error) {
+            setIsLoading(false);
+          }
+        });
+
+        player.play();
       }
     } catch (e) {
       console.error('Failed to play stream audio:', e);
@@ -382,7 +427,6 @@ const LiveStreamsYouTubeScreen = () => {
     setStreamIndex(idx);
   }, []);
 
-  // ── Auto-play audio when stream changes ───
   useEffect(() => {
     if (currentStream?.audioUrl) {
       playStreamAudio(currentStream.audioUrl);
@@ -391,14 +435,12 @@ const LiveStreamsYouTubeScreen = () => {
     }
   }, [currentStream, playStreamAudio, stopStreamAudio]);
 
-  // ── Cleanup on unmount ───
   useEffect(() => {
     return () => {
       stopStreamAudio();
     };
   }, [stopStreamAudio]);
 
-  // ── Fungsi kelola channel/stream dari dialog Setting ──
   const updateStream = useCallback(
     (channelId: string, streamId: string, patch: Partial<StreamSource>) => {
       setChannels((prev) =>
@@ -450,7 +492,6 @@ const LiveStreamsYouTubeScreen = () => {
     [removeStream]
   );
 
-  // ── Fungsi kelola GRUP (channel) dari dialog Setting ──
   const updateChannel = useCallback((channelId: string, patch: Partial<Pick<Channel, 'name' | 'description'>>) => {
     setChannels((prev) => prev.map((ch) => (ch.id === channelId ? { ...ch, ...patch } : ch)));
   }, []);
@@ -468,7 +509,7 @@ const LiveStreamsYouTubeScreen = () => {
   const removeChannel = useCallback(
     (channelId: string) => {
       setChannels((prev) => {
-        if (prev.length <= 1) return prev; // selalu sisakan minimal 1 grup
+        if (prev.length <= 1) return prev;
         const next = prev.filter((ch) => ch.id !== channelId);
         if (activeChannelId === channelId) {
           setActiveChannelId(next[0].id);
@@ -501,7 +542,6 @@ const LiveStreamsYouTubeScreen = () => {
     [channels.length, removeChannel]
   );
 
-    // ── Volume handlers ──
     const SLIDER_TRACK_HEIGHT = 160;
   
     const applyVolume = useCallback((vol: number) => {
@@ -510,11 +550,15 @@ const LiveStreamsYouTubeScreen = () => {
           audioRef.current.volume = vol;
         }
       } else {
-        if (sound) {
-          sound.setVolumeAsync(vol).catch(() => {});
+        if (nativePlayerRef.current) {
+          try {
+            nativePlayerRef.current.volume = vol;
+          } catch (e) {
+            console.error('Failed to set volume:', e);
+          }
         }
       }
-    }, [sound]);
+    }, []);
   
     const handleVolumeChange = useCallback((val: number) => {
       const clamped = Math.max(0, Math.min(1, val));
@@ -548,7 +592,6 @@ const LiveStreamsYouTubeScreen = () => {
       })
     ).current;
   
-    // We recreate the panResponder to capture latest handleVolumeChange
     const volumePanRef = useRef({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -615,19 +658,21 @@ const LiveStreamsYouTubeScreen = () => {
 
           {/* ── Channel selector ── */}
           <View style={styles.channelRow}>
-            {channels.map((ch) => {
+            {channels.map((ch, index) => {
               const active = ch.id === activeChannelId;
               return (
-                <TouchableOpacity
+                <FocusableTouchableOpacity
                   key={ch.id}
                   style={[styles.channelChip, active && styles.channelChipActive]}
                   onPress={() => handleSelectChannel(ch.id)}
                   activeOpacity={0.85}
+                  focusStyle={styles.focusedItem}
+                  hasTVPreferredFocus={index === 0}
                 >
                   <Text style={[styles.channelChipText, active && styles.channelChipTextActive]}>
                     {ch.name || 'Grup Baru'}
                   </Text>
-                </TouchableOpacity>
+                </FocusableTouchableOpacity>
               );
             })}
           </View>
@@ -651,13 +696,14 @@ const LiveStreamsYouTubeScreen = () => {
                   Belum ada link YouTube untuk channel ini.{'\n'}
                   Ketuk ⚙️ di pojok kanan atas untuk menambahkannya.
                 </Text>
-                <TouchableOpacity
+                <FocusableTouchableOpacity
                   style={styles.emptyStateButton}
                   onPress={() => setSettingsVisible(true)}
                   activeOpacity={0.85}
+                  focusStyle={styles.focusedButton}
                 >
                   <Text style={styles.emptyStateButtonText}>Buka Pengaturan</Text>
-                </TouchableOpacity>
+                </FocusableTouchableOpacity>
               </View>
             )}
           </View>
@@ -668,16 +714,17 @@ const LiveStreamsYouTubeScreen = () => {
               {availableStreams.map((s, idx) => {
                 const active = idx === streamIndex;
                 return (
-                  <TouchableOpacity
+                  <FocusableTouchableOpacity
                     key={s.id}
                     style={[styles.streamButton, active && styles.streamButtonActive]}
                     onPress={() => handleSelectStream(idx)}
                     activeOpacity={0.85}
+                    focusStyle={styles.focusedItem}
                   >
                     <Text style={[styles.streamButtonText, active && styles.streamButtonTextActive]}>
                       {s.label}
                     </Text>
-                  </TouchableOpacity>
+                  </FocusableTouchableOpacity>
                 );
               })}
             </View>
@@ -689,40 +736,43 @@ const LiveStreamsYouTubeScreen = () => {
           </Text>
         </View>
 
-                  {/* ── Tombol Setting (di tengah) ── */}
+          {/* ── Tombol Setting (di tengah) ── */}
           <View style={styles.settingsButtonRow}>
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={styles.settingsButton}
               onPress={() => setSettingsVisible(true)}
               activeOpacity={0.8}
+              focusStyle={styles.focusedButton}
             >
               <GearIcon />
               <Text style={styles.settingsButtonText}>Pengaturan Stream</Text>
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
           </View>
       </ScrollView>
 
       {/* ── Floating Volume Button (kanan layar) ── */}
-      <TouchableOpacity
+      <FocusableTouchableOpacity
         style={styles.floatingVolumeBtn}
         onPress={() => setShowVolumeModal(true)}
         activeOpacity={0.8}
+        focusStyle={styles.focusedFloatingButton}
       >
         {isMuted || effectiveVolume === 0 ? (
           <IconVolumeX size={22} color={C.recRed} />
         ) : (
           <IconVolume size={22} color={C.primary} />
         )}
-      </TouchableOpacity>
+      </FocusableTouchableOpacity>
 
       {/* ── Floating Navigation Button (bawah volume) ── */}
-      <TouchableOpacity
+      <FocusableTouchableOpacity
         style={styles.floatingNavBtn}
         onPress={() => setActiveScreen('root')}
         activeOpacity={0.8}
+        focusStyle={styles.focusedFloatingButton}
       >
         <Text style={styles.floatingNavBtnText}>{'Radio'}</Text>
-      </TouchableOpacity>
+      </FocusableTouchableOpacity>
 
       {/* ── Volume Modal ── */}
       <Modal
@@ -731,22 +781,24 @@ const LiveStreamsYouTubeScreen = () => {
         animationType="fade"
         onRequestClose={() => setShowVolumeModal(false)}
       >
-        <TouchableOpacity
+        <FocusableTouchableOpacity
           style={styles.volumeModalOverlay}
           activeOpacity={1}
           onPress={() => setShowVolumeModal(false)}
+          focusStyle={styles.focusedOverlay}
         >
-          <TouchableOpacity
+          <FocusableTouchableOpacity
             style={styles.volumeDialog}
             activeOpacity={1}
             onPress={() => {}}
+            focusStyle={styles.focusedDialog}
           >
             {/* Dialog Header */}
             <View style={styles.volumeDialogHeader}>
               <Text style={styles.volumeDialogTitle}>Volume</Text>
-              <TouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn}>
+              <FocusableTouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn} focusStyle={styles.focusedCloseButton}>
                 <Text style={styles.volumeCloseBtnText}>✕</Text>
-              </TouchableOpacity>
+              </FocusableTouchableOpacity>
             </View>
 
             {/* Percentage */}
@@ -778,13 +830,14 @@ const LiveStreamsYouTubeScreen = () => {
             </View>
 
             {/* Mute Button */}
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={[
                 styles.muteButton,
                 isMuted && styles.muteButtonActive,
               ]}
               onPress={toggleMute}
               activeOpacity={0.8}
+              focusStyle={styles.focusedItem}
             >
               {isMuted ? (
                 <IconVolumeX size={18} color={C.recRed} />
@@ -794,9 +847,9 @@ const LiveStreamsYouTubeScreen = () => {
               <Text style={[styles.muteButtonText, isMuted && styles.muteButtonTextActive]}>
                 {isMuted ? 'Unmute' : 'Mute'}
               </Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
+            </FocusableTouchableOpacity>
+          </FocusableTouchableOpacity>
+        </FocusableTouchableOpacity>
       </Modal>
 
       {/* ── Dialog Pengaturan (fullscreen) ── */}
@@ -813,9 +866,9 @@ const LiveStreamsYouTubeScreen = () => {
           <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
           <View style={styles.settingsHeader}>
             <Text style={styles.settingsTitle}>Pengaturan Stream</Text>
-            <TouchableOpacity onPress={() => setSettingsVisible(false)} activeOpacity={0.8}>
+            <FocusableTouchableOpacity onPress={() => setSettingsVisible(false)} activeOpacity={0.8} focusStyle={styles.focusedCloseButton}>
               <CloseIcon />
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
           </View>
 
           <ScrollView
@@ -841,18 +894,18 @@ const LiveStreamsYouTubeScreen = () => {
                       onChangeText={(text) => updateChannel(ch.id, { description: text })}
                     />
                   </View>
-                  <TouchableOpacity
+                  <FocusableTouchableOpacity
                     style={[styles.deleteButton, styles.deleteChannelButton]}
                     onPress={() => confirmRemoveChannel(ch.id, ch.name)}
                     activeOpacity={0.8}
+                    focusStyle={styles.focusedDeleteButton}
                   >
                     <TrashIcon />
-                  </TouchableOpacity>
+                  </FocusableTouchableOpacity>
                 </View>
 
                 {ch.streams.map((s) => {
                   const youtubeValid = !!extractYoutubeId(s.youtubeUrl);
-                  // For audioStreamUrl, a simple non-empty check is sufficient for basic validity
                   const audioValid = !!s.audioStreamUrl?.trim();
                   return (
                     <View key={s.id}>
@@ -894,37 +947,39 @@ const LiveStreamsYouTubeScreen = () => {
                             </Text>
                           )}
                         </View>
-                        <TouchableOpacity
+                        <FocusableTouchableOpacity
                           style={styles.deleteButton}
                           onPress={() => confirmRemoveStream(ch.id, s.id, s.label)}
                           activeOpacity={0.8}
+                          focusStyle={styles.focusedDeleteButton}
                         >
                           <TrashIcon />
-                        </TouchableOpacity>
+                        </FocusableTouchableOpacity>
                       </View>
                       <View style={styles.streamDivider} />
                     </View>
                   );
                 })}
 
-                <TouchableOpacity
+                <FocusableTouchableOpacity
                   style={styles.addStreamButton}
                   onPress={() => addStream(ch.id)}
                   activeOpacity={0.85}
+                  focusStyle={styles.focusedButton}
                 >
                   <Text style={styles.addStreamButtonText}>+ Tambah Stream</Text>
-                </TouchableOpacity>
+                </FocusableTouchableOpacity>
               </View>
             ))}
 
-            {/* ── Tambah grup stream baru (custom, nama & deskripsi bebas) ── */}
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={styles.addChannelButton}
               onPress={addChannel}
               activeOpacity={0.85}
+              focusStyle={styles.focusedButton}
             >
               <Text style={styles.addChannelButtonText}>+ Tambahkan Grup Stream Baru</Text>
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
 
             <Text style={styles.settingsFooterHint}>
               Contoh link yang didukung: youtube.com/watch?v=..., youtube.com/live/..., youtu.be/...
@@ -932,13 +987,14 @@ const LiveStreamsYouTubeScreen = () => {
           </ScrollView>
 
           <View style={styles.settingsDoneRow}>
-            <TouchableOpacity
+            <FocusableTouchableOpacity
               style={styles.doneButton}
               onPress={() => setSettingsVisible(false)}
               activeOpacity={0.85}
+              focusStyle={styles.focusedButton}
             >
               <Text style={styles.doneButtonText}>Selesai</Text>
-            </TouchableOpacity>
+            </FocusableTouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1077,7 +1133,6 @@ const styles = StyleSheet.create({
 
   hintText: { fontSize: 12, color: C.textMuted, textAlign: 'center', marginTop: 16 },
 
-  // ── Settings dialog ──
   settingsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1193,7 +1248,6 @@ const styles = StyleSheet.create({
   },
   doneButtonText: { color: C.bg, fontWeight: '800', fontSize: 15 },
 
-  // ── Volume floating button ──
   floatingVolumeBtn: {
     position: 'absolute',
     right: 16,
@@ -1209,7 +1263,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-  // ── Floating Navigation Button ──
   floatingNavBtn: {
     position: 'absolute',
     right: 16,
@@ -1230,7 +1283,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  // ── Volume Modal ──
   volumeModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -1286,7 +1338,6 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'] as any,
     marginBottom: 12,
   },
-  // ── Custom Vertical Slider ──
   sliderOuterContainer: {
     width: 44,
     height: 160,
@@ -1326,7 +1377,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
-  // ── Mute Button ──
   muteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1350,11 +1400,44 @@ const styles = StyleSheet.create({
   muteButtonTextActive: {
     color: C.recRed,
   },
+
+  // Focus Styles
+  focusedItem: {
+    borderColor: C.primary,
+    borderWidth: 2,
+    transform: [{ scale: 1.05 }],
+  },
+  focusedButton: {
+    borderColor: C.primary,
+    borderWidth: 2,
+    backgroundColor: 'rgba(0, 219, 233, 0.2)',
+    transform: [{ scale: 1.05 }],
+  },
+  focusedFloatingButton: {
+    borderColor: C.primary,
+    borderWidth: 3,
+    transform: [{ scale: 1.1 }],
+  },
+  focusedOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  focusedDialog: {
+    borderColor: C.primary,
+    borderWidth: 2,
+  },
+  focusedCloseButton: {
+    borderColor: C.primary,
+    borderWidth: 2,
+  },
+  focusedDeleteButton: {
+    borderColor: C.recRed,
+    borderWidth: 2,
+  },
   streamDivider: {
     height: 1,
     backgroundColor: C.border,
     marginVertical: 10,
-    marginHorizontal: -16, // Adjust to extend across the card
+    marginHorizontal: -16,
   },
 });
 
