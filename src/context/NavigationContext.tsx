@@ -45,7 +45,8 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
 };
 
 // Check if running in browser environment
-const isWeb = typeof window !== 'undefined';
+const isWeb = Platform.OS === 'web';
+
 
 // Update URL based on platform
 const updateURL = (path: string) => {
