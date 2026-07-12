@@ -13,6 +13,7 @@ import RecordingsScreen from './src/screens/RecordingsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import StationsScreen from './src/screens/StationsScreen';
 import StreamScreen from './src/screens/StreamScreen';
+import StreamV2Screen from './src/screens/StreamV2Screen';
 import { NavigationProvider, useNavigation } from './src/context/NavigationContext';
 
 const InnerApp: React.FC = () => {
@@ -20,11 +21,22 @@ const InnerApp: React.FC = () => {
   const { colors, isDark } = useTheme();
 
   const renderScreen = () => {
+    const isStreamActive = activeScreen === 'stream';
+    return (
+      <View style={[styles.root, !isStreamActive && { display: 'none' }]}>
+        <StreamScreen />
+      </View>
+    );
+  };
+
+  const renderActiveScreen = () => {
     switch (activeScreen) {
       case 'root':
         return <RootRadioScreen />;
       case 'stream':
         return <StreamScreen />;
+      case 'streamV2':
+        return <StreamV2Screen />;
       case 'live':
         return <LiveScreen />;
       case 'analytics':
@@ -53,6 +65,7 @@ const InnerApp: React.FC = () => {
         <ThemeToggle />
       </View>
       {renderScreen()}
+      {activeScreen !== 'stream' && renderActiveScreen()}
     </View>
   );
 };

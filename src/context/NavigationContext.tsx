@@ -11,7 +11,8 @@ export type ScreenKey =
   | 'settings'
   | 'stations'
   | 'root'
-  | 'stream';
+  | 'stream'
+  | 'streamV2';
 
 // Map screen keys to URL paths
 const SCREEN_TO_PATH: Record<ScreenKey, string> = {
@@ -25,6 +26,7 @@ const SCREEN_TO_PATH: Record<ScreenKey, string> = {
   stations: 'stations',
   root: '',
   stream: 'stream',
+  streamV2: 'streamV2',
 };
 
 // Map URL paths to screen keys
@@ -39,6 +41,7 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   stations: 'stations',
   '': 'root',
   stream: 'stream',
+  streamV2: 'streamV2',
 };
 
 // Check if running in browser environment

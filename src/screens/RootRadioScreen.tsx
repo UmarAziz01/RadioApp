@@ -14,6 +14,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import { useNavigation } from '../context/NavigationContext';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -181,6 +182,7 @@ function downloadFromBase64(base64: string, name: string, mimeType: string) {
 
 const RootRadioScreen = () => {
   const { colors, isDark } = useTheme();
+  const { setActiveScreen } = useNavigation();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   // ── Responsive helpers ──
@@ -1173,6 +1175,15 @@ const RootRadioScreen = () => {
           )}
         </TouchableOpacity>
 
+        {/* ── Floating Navigation Button (bawah volume) ── */}
+        <TouchableOpacity
+          style={styles.floatingNavBtn}
+          onPress={() => setActiveScreen('stream')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.floatingNavBtnText}>stream</Text>
+        </TouchableOpacity>
+
       {/* ── Volume Modal ── */}
       <Modal
         visible={showVolumeModal}
@@ -1667,7 +1678,7 @@ const styles = StyleSheet.create({
   floatingVolumeBtn: {
     position: 'absolute',
     right: 16,
-    top: '50%',
+    top: '70%',
     transform: [{ translateY: -24 }],
     width: 48,
     height: 48,
@@ -1678,6 +1689,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  floatingNavBtn: {
+    position: 'absolute',
+    right: 16,
+    top: '70%',
+    transform: [{ translateY: 30 }],
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 219, 233, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 219, 233, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  floatingNavBtnText: {
+    color: C.primary,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   // ── Volume Modal ──
   volumeModalOverlay: {

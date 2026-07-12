@@ -12,10 +12,15 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Alert,
+  PanResponder,
 } from 'react-native';
+// Add import for Audio
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useTheme } from '@/theme/ThemeContext';
+import { Audio } from 'expo-av';
+import { useNavigation } from '../context/NavigationContext';
+import { IconVolume, IconVolumeX } from '../components/Icons';
 
 // react-native-webview cuma jalan di native (iOS/Android). Di web kita pakai
 // <iframe> DOM biasa, jadi import-nya dibuat aman untuk kedua platform.
@@ -35,6 +40,8 @@ type StreamSource = {
   id: string;
   label: string;
   youtubeUrl: string; // link YouTube apa saja (watch, live, youtu.be, embed)
+  audioUrl: string; // Link direct stream audio (MP3/AAC/HLS) untuk background playback
+  audioStreamUrl: string;
 };
 
 type Channel = {
@@ -53,9 +60,9 @@ const DEFAULT_CHANNELS: Channel[] = [
     name: 'Makkah',
     description: 'Masjid al-Haram, Mekah',
     streams: [
-      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/24JXS383N1c' },
-      { id: uid(), label: 'Stream 2', youtubeUrl: 'https://www.youtube.com/live/p5mvSivF5Hc' },
-      { id: uid(), label: 'Stream 3', youtubeUrl: 'https://www.youtube.com/live/8OB5WmcfUTk' },
+      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/24JXS383N1c', audioUrl: '', audioStreamUrl: '' },
+      { id: uid(), label: 'Stream 2', youtubeUrl: 'https://www.youtube.com/live/p5mvSivF5Hc', audioUrl: '', audioStreamUrl: '' },
+      { id: uid(), label: 'Stream 3', youtubeUrl: 'https://www.youtube.com/live/8OB5WmcfUTk', audioUrl: '', audioStreamUrl: '' },
     ],
   },
   {
@@ -63,10 +70,10 @@ const DEFAULT_CHANNELS: Channel[] = [
     name: 'Madinah',
     description: 'Masjid an-Nabawi, Madinah',
     streams: [
-      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/rHWSRMcGGBQ' },
+      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/rHWSRMcGGBQ', audioUrl: '', audioStreamUrl: '' },
       // Link ini bukan link video (hanya URL beranda YouTube dgn parameter tracking,
       // tanpa video ID) — ganti lewat dialog ⚙️ Pengaturan dengan link video yang valid.
-      { id: uid(), label: 'Stream 2', youtubeUrl: '' },
+      { id: uid(), label: 'Stream 2', youtubeUrl: '', audioUrl: '', audioStreamUrl: '' },
     ],
   },
   {
@@ -75,7 +82,7 @@ const DEFAULT_CHANNELS: Channel[] = [
     description: 'Masjid al-Aqsa, Yerusalem',
     streams: [
       // Link yang diberikan juga tidak mengandung video ID — isi lewat ⚙️ Pengaturan.
-      { id: uid(), label: 'Stream 1', youtubeUrl: '' },
+      { id: uid(), label: 'Stream 1', youtubeUrl: '', audioUrl: '', audioStreamUrl: '' },
     ],
   },
   {
@@ -83,8 +90,8 @@ const DEFAULT_CHANNELS: Channel[] = [
     name: 'Hajj',
     description: 'Siaran Musim Haji',
     streams: [
-      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/yYJjtr3fbZE' },
-      { id: uid(), label: 'Stream 2', youtubeUrl: 'https://www.youtube.com/live/ZZgws2PxldM' },
+      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/yYJjtr3fbZE', audioUrl: '', audioStreamUrl: '' },
+      { id: uid(), label: 'Stream 2', youtubeUrl: 'https://www.youtube.com/live/ZZgws2PxldM', audioUrl: '', audioStreamUrl: '' },
     ],
   },
   {
@@ -92,7 +99,7 @@ const DEFAULT_CHANNELS: Channel[] = [
     name: 'Gontor',
     description: 'Siaran dari Masjid Gontor, Ponorogo',
     streams: [
-      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/0w2YHmvRIDo' },
+      { id: uid(), label: 'Stream 1', youtubeUrl: 'https://www.youtube.com/live/0w2YHmvRIDo', audioUrl: '', audioStreamUrl: '' },
     ],
   },
 ];
@@ -130,6 +137,7 @@ const C = {
   border: 'rgba(255, 255, 255, 0.08)',
   liveRed: '#ff4d4f',
   danger: '#ff4d4f',
+  recRed: '#ff4d4f',
 };
 
 const BREAKPOINT_TABLET = 600;
@@ -150,8 +158,10 @@ function mergeWithDefaults(stored: Channel[]): Channel[] {
       if (!storedStream) return defaultStream; // stream default belum ada → tambahkan
       // Kalau URL tersimpan kosong tapi default punya URL, isi otomatis.
       // Kalau user sudah isi URL sendiri, jangan ditimpa.
-      const url = storedStream.youtubeUrl?.trim() ? storedStream.youtubeUrl : defaultStream.youtubeUrl;
-      return { ...storedStream, youtubeUrl: url };
+      const youtubeUrl = storedStream.youtubeUrl?.trim() ? storedStream.youtubeUrl : defaultStream.youtubeUrl;
+      const audioUrl = storedStream.audioUrl?.trim() ? storedStream.audioUrl : defaultStream.audioUrl;
+      const audioStreamUrl = storedStream.audioStreamUrl?.trim() ? storedStream.audioStreamUrl : defaultStream.audioStreamUrl;
+      return { ...storedStream, youtubeUrl, audioUrl, audioStreamUrl };
     });
 
     // Tambahkan stream ekstra yang dibuat sendiri oleh user (tidak ada di default)
@@ -229,7 +239,16 @@ const LiveStreamsYouTubeScreen = () => {
   const horizontalPadding = isDesktop || isTablet ? 32 : 16;
 
   const { colors, isDark } = useTheme();
+  const { setActiveScreen } = useNavigation();
 
+  const [volume, setVolume] = useState(1.0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [previousVolume, setPreviousVolume] = useState(1.0);
+  const [showVolumeModal, setShowVolumeModal] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playerState, setPlayerState] = useState<'stopped' | 'playing' | 'paused'>('stopped');
+  const [isLoading, setIsLoading] = useState(false);
   const [channels, setChannels] = useState<Channel[]>(DEFAULT_CHANNELS);
   const [loaded, setLoaded] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState(DEFAULT_CHANNELS[0].id);
@@ -285,9 +304,94 @@ const LiveStreamsYouTubeScreen = () => {
     setActiveChannelId(id);
   }, []);
 
+  const stopStreamAudio = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.src = '';
+          audioRef.current = null;
+        }
+      } catch (e) {
+        console.error('Failed to stop stream audio (web):', e);
+      }
+    }
+
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+      } catch (e) {
+        console.error('Failed to stop stream audio:', e);
+      }
+    }
+    setPlayerState('stopped');
+  }, [sound]);
+
+  const playStreamAudio = useCallback(async (url: string) => {
+    if (!url) return;
+    setIsLoading(true);
+
+    try {
+      // Stop current sound first
+      await stopStreamAudio();
+
+      if (Platform.OS === 'web') {
+        const audio = new window.Audio(url);
+        audio.crossOrigin = 'anonymous';
+        audio.volume = isMuted ? 0 : volume;
+        audioRef.current = audio;
+
+        audio.addEventListener('playing', () => {
+          setPlayerState('playing');
+          setIsLoading(false);
+        });
+
+        audio.addEventListener('error', (e) => {
+          console.error('Audio error:', e);
+          setIsLoading(false);
+        });
+
+        await audio.play();
+      } else {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: true, volume: isMuted ? 0 : volume },
+          (status) => {
+            if (status.isLoaded && status.isPlaying) {
+              setPlayerState('playing');
+              setIsLoading(false);
+            }
+          }
+        );
+        setSound(newSound);
+      }
+    } catch (e) {
+      console.error('Failed to play stream audio:', e);
+      setIsLoading(false);
+    }
+  }, [isMuted, volume, stopStreamAudio]);
+
   const handleSelectStream = useCallback((idx: number) => {
     setStreamIndex(idx);
   }, []);
+
+  // ── Auto-play audio when stream changes ───
+  useEffect(() => {
+    if (currentStream?.audioUrl) {
+      playStreamAudio(currentStream.audioUrl);
+    } else {
+      stopStreamAudio();
+    }
+  }, [currentStream, playStreamAudio, stopStreamAudio]);
+
+  // ── Cleanup on unmount ───
+  useEffect(() => {
+    return () => {
+      stopStreamAudio();
+    };
+  }, [stopStreamAudio]);
 
   // ── Fungsi kelola channel/stream dari dialog Setting ──
   const updateStream = useCallback(
@@ -312,7 +416,7 @@ const LiveStreamsYouTubeScreen = () => {
               ...ch,
               streams: [
                 ...ch.streams,
-                { id: uid(), label: `Stream ${ch.streams.length + 1}`, youtubeUrl: '' },
+                { id: uid(), label: `Stream ${ch.streams.length + 1}`, youtubeUrl: '', audioUrl: '', audioStreamUrl: '' },
               ],
             }
       )
@@ -351,7 +455,7 @@ const LiveStreamsYouTubeScreen = () => {
       id: uid(),
       name: '',
       description: '',
-      streams: [{ id: uid(), label: 'Stream 1', youtubeUrl: '' }],
+      streams: [{ id: uid(), label: 'Stream 1', youtubeUrl: '', audioUrl: '', audioStreamUrl: '' }],
     };
     setChannels((prev) => [...prev, newChannel]);
   }, []);
@@ -391,6 +495,101 @@ const LiveStreamsYouTubeScreen = () => {
     },
     [channels.length, removeChannel]
   );
+
+    // ── Volume handlers ──
+    const SLIDER_TRACK_HEIGHT = 160;
+  
+    const applyVolume = useCallback((vol: number) => {
+      if (Platform.OS === 'web') {
+        if (audioRef.current) {
+          audioRef.current.volume = vol;
+        }
+      } else {
+        if (sound) {
+          sound.setVolumeAsync(vol).catch(() => {});
+        }
+      }
+    }, [sound]);
+  
+    const handleVolumeChange = useCallback((val: number) => {
+      const clamped = Math.max(0, Math.min(1, val));
+      setVolume(clamped);
+      if (clamped > 0) {
+        setIsMuted(false);
+        setPreviousVolume(clamped);
+      }
+      applyVolume(clamped);
+    }, [applyVolume]);
+  
+    const toggleMute = useCallback(() => {
+      if (isMuted) {
+        setIsMuted(false);
+        setVolume(previousVolume);
+        applyVolume(previousVolume);
+      } else {
+        setPreviousVolume(volume);
+        setIsMuted(true);
+        setVolume(0);
+        applyVolume(0);
+      }
+    }, [isMuted, volume, previousVolume, applyVolume]);
+  
+    const volumePanResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {},
+        onPanResponderMove: () => {},
+      })
+    ).current;
+  
+    // We recreate the panResponder to capture latest handleVolumeChange
+    const volumePanRef = useRef({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt: any) => {
+        const locationY = evt.nativeEvent.locationY;
+        const val = 1 - locationY / SLIDER_TRACK_HEIGHT;
+        handleVolumeChange(val);
+      },
+      onPanResponderMove: (evt: any) => {
+        const locationY = evt.nativeEvent.locationY;
+        const val = 1 - locationY / SLIDER_TRACK_HEIGHT;
+        handleVolumeChange(val);
+      },
+    });
+  
+    useEffect(() => {
+      volumePanRef.current = {
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt: any) => {
+          const locationY = evt.nativeEvent.locationY;
+          const val = 1 - locationY / SLIDER_TRACK_HEIGHT;
+          handleVolumeChange(val);
+        },
+        onPanResponderMove: (evt: any) => {
+          const locationY = evt.nativeEvent.locationY;
+          const val = 1 - locationY / SLIDER_TRACK_HEIGHT;
+          handleVolumeChange(val);
+        },
+      };
+    }, [handleVolumeChange]);
+  
+    const sliderPanResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt, gs) => {
+          volumePanRef.current.onPanResponderGrant(evt);
+        },
+        onPanResponderMove: (evt, gs) => {
+          volumePanRef.current.onPanResponderMove(evt);
+        },
+      })
+    ).current;
+  
+    const effectiveVolume = isMuted ? 0 : volume;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -498,6 +697,103 @@ const LiveStreamsYouTubeScreen = () => {
           </View>
       </ScrollView>
 
+      {/* ── Floating Volume Button (kanan layar) ── */}
+      <TouchableOpacity
+        style={styles.floatingVolumeBtn}
+        onPress={() => setShowVolumeModal(true)}
+        activeOpacity={0.8}
+      >
+        {isMuted || effectiveVolume === 0 ? (
+          <IconVolumeX size={22} color={C.recRed} />
+        ) : (
+          <IconVolume size={22} color={C.primary} />
+        )}
+      </TouchableOpacity>
+
+      {/* ── Floating Navigation Button (bawah volume) ── */}
+      <TouchableOpacity
+        style={styles.floatingNavBtn}
+        onPress={() => setActiveScreen('root')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.floatingNavBtnText}>{'Radio'}</Text>
+      </TouchableOpacity>
+
+      {/* ── Volume Modal ── */}
+      <Modal
+        visible={showVolumeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowVolumeModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.volumeModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowVolumeModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.volumeDialog}
+            activeOpacity={1}
+            onPress={() => {}}
+          >
+            {/* Dialog Header */}
+            <View style={styles.volumeDialogHeader}>
+              <Text style={styles.volumeDialogTitle}>Volume</Text>
+              <TouchableOpacity onPress={() => setShowVolumeModal(false)} style={styles.volumeCloseBtn}>
+                <Text style={styles.volumeCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Percentage */}
+            <Text style={styles.volumePercentText}>
+              {Math.round(effectiveVolume * 100)}%
+            </Text>
+
+            {/* Vertical Slider */}
+            <View
+              style={styles.sliderOuterContainer}
+              {...sliderPanResponder.panHandlers}
+            >
+              <View style={styles.sliderTrack} pointerEvents="none">
+                <View
+                  style={[
+                    styles.sliderFill,
+                    { height: `${effectiveVolume * 100}%` },
+                  ]}
+                  pointerEvents="none"
+                />
+                <View
+                  style={[
+                    styles.sliderThumb,
+                    { bottom: `${effectiveVolume * 100}%` },
+                  ]}
+                  pointerEvents="none"
+                />
+              </View>
+            </View>
+
+            {/* Mute Button */}
+            <TouchableOpacity
+              style={[
+                styles.muteButton,
+                isMuted && styles.muteButtonActive,
+              ]}
+              onPress={toggleMute}
+              activeOpacity={0.8}
+            >
+              {isMuted ? (
+                <IconVolumeX size={18} color={C.recRed} />
+              ) : (
+                <IconVolume size={18} color={C.primary} />
+              )}
+              <Text style={[styles.muteButtonText, isMuted && styles.muteButtonTextActive]}>
+                {isMuted ? 'Unmute' : 'Mute'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Dialog Pengaturan (fullscreen) ── */}
       <Modal
         visible={settingsVisible}
@@ -550,39 +846,58 @@ const LiveStreamsYouTubeScreen = () => {
                 </View>
 
                 {ch.streams.map((s) => {
-                  const valid = !!extractYoutubeId(s.youtubeUrl);
+                  const youtubeValid = !!extractYoutubeId(s.youtubeUrl);
+                  // For audioStreamUrl, a simple non-empty check is sufficient for basic validity
+                  const audioValid = !!s.audioStreamUrl?.trim();
                   return (
-                    <View key={s.id} style={styles.streamEditRow}>
-                      <View style={{ flex: 1 }}>
-                        <TextInput
-                          style={styles.input}
-                          value={s.label}
-                          placeholder="Nama stream (mis. Stream 1)"
-                          placeholderTextColor={C.textMuted}
-                          onChangeText={(text) => updateStream(ch.id, s.id, { label: text })}
-                        />
-                        <TextInput
-                          style={[styles.input, { marginTop: 6 }]}
-                          value={s.youtubeUrl}
-                          placeholder="Tempel link YouTube di sini"
-                          placeholderTextColor={C.textMuted}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          onChangeText={(text) => updateStream(ch.id, s.id, { youtubeUrl: text })}
-                        />
-                        {s.youtubeUrl.length > 0 && (
-                          <Text style={[styles.validationText, valid ? styles.validText : styles.invalidText]}>
-                            {valid ? '✓ Link valid' : '✕ Link tidak dikenali'}
-                          </Text>
-                        )}
+                    <View key={s.id}>
+                      <View style={styles.streamEditRow}>
+                        <View style={{ flex: 1 }}>
+                          <TextInput
+                            style={styles.input}
+                            value={s.label}
+                            placeholder="Nama stream (mis. Stream 1)"
+                            placeholderTextColor={C.textMuted}
+                            onChangeText={(text) => updateStream(ch.id, s.id, { label: text })}
+                          />
+                          <TextInput
+                            style={[styles.input, { marginTop: 6 }]}
+                            value={s.youtubeUrl}
+                            placeholder="Tempel link YouTube di sini"
+                            placeholderTextColor={C.textMuted}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            onChangeText={(text) => updateStream(ch.id, s.id, { youtubeUrl: text })}
+                          />
+                          {s.youtubeUrl.length > 0 && (
+                            <Text style={[styles.validationText, youtubeValid ? styles.validText : styles.invalidText]}>
+                              {youtubeValid ? '✓ Link valid' : '✕ Link tidak dikenali'}
+                            </Text>
+                          )}
+                          <TextInput
+                            style={[styles.input, { marginTop: 6 }]}
+                            value={s.audioStreamUrl}
+                            placeholder="Tempel link Audio Stream di sini"
+                            placeholderTextColor={C.textMuted}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            onChangeText={(text) => updateStream(ch.id, s.id, { audioStreamUrl: text })}
+                          />
+                          {s.audioStreamUrl.length > 0 && (
+                            <Text style={[styles.validationText, audioValid ? styles.validText : styles.invalidText]}>
+                              {audioValid ? '✓ Link audio valid' : '✕ Link audio tidak valid'}
+                            </Text>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => confirmRemoveStream(ch.id, s.id, s.label)}
+                          activeOpacity={0.8}
+                        >
+                          <TrashIcon />
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => confirmRemoveStream(ch.id, s.id, s.label)}
-                        activeOpacity={0.8}
-                      >
-                        <TrashIcon />
-                      </TouchableOpacity>
+                      <View style={styles.streamDivider} />
                     </View>
                   );
                 })}
@@ -872,6 +1187,170 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doneButtonText: { color: C.bg, fontWeight: '800', fontSize: 15 },
+
+  // ── Volume floating button ──
+  floatingVolumeBtn: {
+    position: 'absolute',
+    right: 16,
+    top: '70%',
+    transform: [{ translateY: -24 }],
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  // ── Floating Navigation Button ──
+  floatingNavBtn: {
+    position: 'absolute',
+    right: 16,
+    top: '70%',
+    transform: [{ translateY: 30 }],
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 219, 233, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 219, 233, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  floatingNavBtnText: {
+    color: C.primary,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  // ── Volume Modal ──
+  volumeModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 24,
+  },
+  volumeDialog: {
+    width: 100,
+    backgroundColor: 'rgba(22, 24, 30, 0.97)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  volumeDialogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+  },
+  volumeDialogTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.onSurface,
+    letterSpacing: 0.5,
+  },
+  volumeCloseBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  volumeCloseBtnText: {
+    fontSize: 12,
+    color: C.textMuted,
+    fontWeight: '700',
+  },
+  volumePercentText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.primary,
+    fontVariant: ['tabular-nums'] as any,
+    marginBottom: 12,
+  },
+  // ── Custom Vertical Slider ──
+  sliderOuterContainer: {
+    width: 44,
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sliderTrack: {
+    width: 6,
+    height: 160,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 3,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  sliderFill: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: C.primary,
+    borderRadius: 3,
+  },
+  sliderThumb: {
+    position: 'absolute',
+    left: -7,
+    marginBottom: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: C.onSurface,
+    borderWidth: 2,
+    borderColor: C.primary,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  // ── Mute Button ──
+  muteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  muteButtonActive: {
+    backgroundColor: 'rgba(255, 77, 79, 0.15)',
+    borderColor: 'rgba(255, 77, 79, 0.35)',
+  },
+  muteButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.onSurfaceVariant,
+  },
+  muteButtonTextActive: {
+    color: C.recRed,
+  },
+  streamDivider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginVertical: 10,
+    marginHorizontal: -16, // Adjust to extend across the card
+  },
 });
 
 export default LiveStreamsYouTubeScreen;
