@@ -4,7 +4,7 @@
     "slug": "radio-app",
     "version": "1..",
     "orientation": "portrait",
-    "icon": "./assets/favicon.png",
+    "icon": "./assets/favicon.svg",
     "userInterfaceStyle": "automatic",
     "newArchEnabled":true,
     "splash": {
@@ -28,7 +28,7 @@
       "permissions": ["RECORD_AUDIO"]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "./assets/favicon.svg",
       "bundler": "metro"
     },
     "plugins": [
